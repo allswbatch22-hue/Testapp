@@ -53,7 +53,7 @@
         .cat-box h2 { margin: 0 0 8px 0; font-size: 28px; }
         .cat-box h3 { margin: 0; font-size: 14px; color: var(--text-main); font-weight: 700; }
         
-        .action-group { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; width: 100%; }
+        .action-group { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; width: 100%; flex-wrap: wrap;}
         .btn-sm { padding: 8px 15px; border-radius: 8px; font-weight: 700; font-size: 12px; border: none; color: white; cursor: pointer; }
         .bg-green { background: #10b981; } .bg-red { background: #ef4444; } .bg-purple { background: #8b5cf6; } .bg-gray { background: #64748b; }
 
@@ -111,7 +111,7 @@
         </div>
     </div>
 
-    <div id="loginScreen" class="screen active">
+    <div id="loginScreen" class="screen">
         <div style="background: var(--bg-card); padding: 30px 20px; border-radius: 24px; margin: auto 0; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border: 1px solid var(--border-color);">
             <img id="appLogoImg" src="" style="display:none; max-width: 100px; height: auto; margin: 0 auto 15px auto; border-radius: 12px;">
             
@@ -143,7 +143,6 @@
         <div style="background: var(--bg-card); padding: 30px 20px; border-radius: 24px; margin: auto 0; border: 1px solid var(--border-color);">
             <h2 style="text-align: center; margin-top: 0;">Reset Password</h2>
             <p style="text-align: center; color: var(--text-sub); font-size: 13px; margin-bottom: 25px;">Enter details to reset</p>
-            
             <input type="text" id="fName" placeholder="Registered Full Name">
             <input type="number" id="fNum" placeholder="Registered Mobile Number">
             <label style="font-size:12px; font-weight:bold; color:var(--text-sub); margin-bottom:5px; display:block;">Enter Registered Date of Birth:</label>
@@ -287,7 +286,24 @@
         window.showUI = (state) => document.getElementById('processingUI').style.display = state ? 'flex' : 'none';
         window.showCustomModal = function(title, text) { document.getElementById('modalTitle').innerText = title; document.getElementById('modalText').innerHTML = text; document.getElementById('customModal').classList.add('show'); }
         window.closeModal = (id) => document.getElementById(id).classList.remove('show');
-        window.switchScreen = function(screenId) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById(screenId).classList.add('active'); window.scrollTo(0, 0); }
+        
+        // UPGRADE 3 FIX: Mobile Back Button Support using history API
+        window.switchScreen = function(screenId) { 
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); 
+            document.getElementById(screenId).classList.add('active'); 
+            window.scrollTo(0, 0); 
+            history.pushState({ screen: screenId }, "", "#" + screenId);
+        }
+
+        window.addEventListener('popstate', function(event) {
+            if (event.state && event.state.screen) {
+                document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+                document.getElementById(event.state.screen).classList.add('active');
+            } else {
+                document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+                document.getElementById('loginScreen').classList.add('active');
+            }
+        });
 
         window.confirmLogoutAction = () => document.getElementById('confirmModal').classList.add('show');
         window.executeLogout = () => { localStorage.clear(); closeModal('confirmModal'); switchScreen('loginScreen'); }
@@ -329,7 +345,6 @@
             } catch(e) { showUI(false); showCustomModal("Error", e.message); }
         }
 
-        // UPGRADE 4: Name check implemented inside reset password
         window.resetPassword = async function() {
             const name = document.getElementById('fName').value.trim();
             const num = document.getElementById('fNum').value;
@@ -348,10 +363,8 @@
             } catch(e) { showUI(false); showCustomModal("Error", e.message); }
         }
 
-        // UPGRADE 1 & CORE INIT
         async function loadInitialData() {
             try {
-                // Fetch App Logo for Login Screen
                 const logoSnap = await getDoc(doc(db, "App_Settings", "Logo"));
                 if(logoSnap.exists() && logoSnap.data().imageUrl) {
                     const img = document.getElementById('appLogoImg');
@@ -362,7 +375,9 @@
             checkLoginStatus();
         }
 
+        // UPGRADE 5 FIX: Show UI Loader immediately to stop flashing
         async function checkLoginStatus() {
+            showUI(true); 
             const num = localStorage.getItem("userNum"), token = localStorage.getItem("deviceToken");
             if(!num || !token) { showUI(false); switchScreen('loginScreen'); return; }
             try {
@@ -410,7 +425,6 @@
                     document.getElementById('appNotice').style.display = "block";
                 } else { document.getElementById('appNotice').style.display = "none"; }
 
-                // UPGRADE 2: Daily Target Data Load
                 const targetSnap = await getDoc(doc(db, "Notices", "Daily_Target"));
                 if(targetSnap.exists() && targetSnap.data().description) {
                     document.getElementById('dailyTargetDesc').innerText = targetSnap.data().description;
@@ -420,10 +434,9 @@
                 const supportSnap = await getDoc(doc(db, "App_Settings", "Support"));
                 if(supportSnap.exists()) {
                     const sData = supportSnap.data();
-                    // UPGRADE 5: Kodular Safe Link Routing
                     window.openSafeLink = function(url) {
                         if (!url) return;
-                        window.top.location.href = url; // This forces the webview to handle deep links rather than ignoring target="_blank"
+                        window.top.location.href = url;
                     };
 
                     if(sData.telegram) { document.getElementById('linkTg').onclick = () => openSafeLink(sData.telegram); document.getElementById('linkTg').style.display = "inline-block"; }
@@ -480,7 +493,6 @@
             } catch(e) { baseSeriesPrice = 499; }
         }
 
-        // ================= TOPIC WISE TESTS & NORMAL TESTS =================
         window.loadSubjects = async function() {
             document.getElementById('listTitle').innerText = "Topic Tests"; switchScreen('subjectScreen');
             const list = document.getElementById('subjectList'); list.innerHTML = "<div class='inline-loader'>Loading Subjects...</div>";
@@ -526,7 +538,6 @@
                         let isPaid = (category === 'Paid Test' || category === 'Topic Test');
                         let isLocked = isPaid && !hasFullAccess;
 
-                        // UPGRADE 3: PDF Locking Logic Included
                         let pdfBtn = '';
                         if(t.pdfLink) {
                             if(isLocked) {
@@ -536,13 +547,20 @@
                             }
                         }
                         
-                        let mainBtn = isLocked
-                            ? `<button class="btn-sm bg-red" onclick="openSeriesUnlock()">🔒 Unlock Series</button>`
-                            : `<button class="btn-sm bg-green" onclick="startTest('${t.directLink}')">Start Test</button>`;
+                        // UPGRADE 4 FIX: Dual Interface Button Support
+                        let mainBtn = '';
+                        if(isLocked) {
+                            mainBtn = `<button class="btn-sm bg-red" onclick="openSeriesUnlock()">🔒 Unlock Series</button>`;
+                        } else {
+                            if(t.tcsLink) mainBtn += `<button class="btn-sm bg-green" onclick="startTest('${t.tcsLink}')">TCS Test</button> `;
+                            if(t.eduquityLink) mainBtn += `<button class="btn-sm" style="background:#f59e0b;" onclick="startTest('${t.eduquityLink}')">Eduquity Test</button>`;
+                            // Fallback for old database links
+                            if(t.directLink && !t.tcsLink && !t.eduquityLink) mainBtn += `<button class="btn-sm bg-green" onclick="startTest('${t.directLink}')">Start Test</button>`;
+                        }
 
                         list.innerHTML += `
                             <div class="card" style="display:block; border-left-color: ${isPaid ? '#ef4444' : '#10b981'};">
-                                <div class="card-content"><h3>${t.testName} <span style="font-size:10px; background:var(--bg-main); padding:2px 6px; border-radius:4px;">${t.pattern}</span></h3></div>
+                                <div class="card-content"><h3>${t.testName}</h3></div>
                                 <div class="action-group">${pdfBtn} ${mainBtn}</div>
                             </div>`;
                     }
@@ -553,7 +571,6 @@
 
         window.startTest = function(link) { window.location.href = link + (link.includes('?') ? '&' : '?') + 'uid=' + localStorage.getItem("userNum"); }
 
-        // ================= NOTES =================
         window.loadNotes = async function() {
             document.getElementById('listTitle').innerText = "Free PDF Notes"; switchScreen('dataListScreen');
             const list = document.getElementById('dataContainer'); list.innerHTML = "<div class='inline-loader'>Loading Notes...</div>";
@@ -566,7 +583,6 @@
             } catch(e) { list.innerHTML = "Error loading"; }
         }
 
-        // ================= COUPON & UNLOCK LOGIC =================
         window.openSeriesUnlock = function() {
             document.getElementById('unlockExamName').innerText = `${currentExam} Premium Series`;
             document.getElementById('activationInput').value = "";
@@ -629,7 +645,6 @@
             } catch (e) { showUI(false); showCustomModal("Error", e.message); }
         };
 
-        // Initialize with logo loader instead of immediate checkLoginStatus
         window.onload = loadInitialData;
     </script>
 </body>
