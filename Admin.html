@@ -143,6 +143,15 @@
         </div>
 
         <div id="sec-marketing" class="section">
+            
+            <h2>📱 App Logo Settings</h2>
+            <div class="form-group"><label>App Logo Link</label><input type="text" id="appLogoLink" placeholder="https://... (Direct Image Link)"></div>
+            <div style="display:flex; gap:10px;">
+                <button class="btn btn-purple" onclick="saveLogo()">Update Logo</button>
+                <button class="btn btn-red" onclick="removeLogo()">Remove Logo</button>
+            </div>
+            
+            <hr>
             <h2>🖼️ App Main Banner</h2>
             <div class="form-group"><label>Banner Title</label><input type="text" id="banTitle" placeholder="Premium Test Series"></div>
             <div class="form-group"><label>Banner Subtitle</label><input type="text" id="banSub" placeholder="India's Best Platform..."></div>
@@ -150,6 +159,14 @@
             <div style="display:flex; gap:10px;">
                 <button class="btn btn-green" onclick="saveBanner()">Update Banner</button>
                 <button class="btn btn-red" onclick="removeBanner()">Remove Banner</button>
+            </div>
+
+            <hr>
+            <h2>🎯 Daily Target</h2>
+            <div class="form-group"><label>Target Message / Description</label><textarea id="dailyTargetDesc" rows="3" placeholder="e.g. Complete chapter 1, revise mock 2..."></textarea></div>
+            <div style="display:flex; gap:10px;">
+                <button class="btn btn-purple" onclick="saveDailyTarget()">Publish Daily Target</button>
+                <button class="btn btn-red" onclick="removeDailyTarget()">Remove Target</button>
             </div>
 
             <hr>
@@ -178,7 +195,11 @@
 
             <hr>
             <h2>Generate Activation Code</h2>
-            <p style="font-size:12px; color:#94a3b8;">This code will only unlock the Exam selected above.</p>
+            <p style="font-size:12px; color:#94a3b8;">This code will unlock the Exam selected above.</p>
+            
+            <div class="form-group"><label style="color:#10b981;">Final Amount Paid by User (₹) - For Revenue Calc</label>
+            <input type="number" id="finalPaidAmount" placeholder="e.g. 45"></div>
+
             <div class="form-group"><input type="text" id="actCode" placeholder="Click to Generate" readonly style="font-weight:bold; color:#60a5fa; text-align:center; letter-spacing:2px;"></div>
             <div style="display:flex; gap:10px;">
                 <button class="btn btn-green" onclick="generateRandomCode()">⚡ Generate</button>
@@ -329,7 +350,12 @@
                     const data = doc.data();
                     if(data.status === "Used") {
                         usedCodesCount++;
-                        totalRev += priceMap[data.examName] || 499;
+                        // UPGRADE 3: REVENUE IS NOW CALCULATED FROM ACTUAL PAID AMOUNT
+                        if(data.finalPricePaid !== undefined) {
+                            totalRev += Number(data.finalPricePaid);
+                        } else {
+                            totalRev += priceMap[data.examName] || 499;
+                        }
                     }
                     if(data.status === "Unused") unusedCodesCount++;
                 });
@@ -380,6 +406,16 @@
         }
 
         // ================= MARKETING =================
+        // UPGRADE 1 JS Functions
+        window.saveLogo = async function() {
+            showUI(true);
+            try { await setDoc(doc(db, "App_Settings", "Logo"), { imageUrl: document.getElementById('appLogoLink').value }); showUI(false); showCustomModal("Success", "App Logo Updated Successfully!"); } catch(e) { showUI(false); }
+        }
+        window.removeLogo = async function() {
+            showUI(true);
+            try { await deleteDoc(doc(db, "App_Settings", "Logo")); showUI(false); showCustomModal("Success", "App Logo Removed!"); document.getElementById('appLogoLink').value=""; } catch(e) { showUI(false); }
+        }
+
         window.saveBanner = async function() {
             showUI(true);
             try { await setDoc(doc(db, "App_Settings", "Banner"), { title: document.getElementById('banTitle').value, subtitle: document.getElementById('banSub').value, imageUrl: document.getElementById('banImg').value }); showUI(false); showCustomModal("Success", "Banner Updated Successfully!"); } catch(e) { showUI(false); }
@@ -387,6 +423,16 @@
         window.removeBanner = async function() {
             showUI(true);
             try { await deleteDoc(doc(db, "App_Settings", "Banner")); showUI(false); showCustomModal("Success", "Banner Removed Completely!"); document.getElementById('banTitle').value=""; document.getElementById('banSub').value=""; document.getElementById('banImg').value=""; } catch(e) { showUI(false); }
+        }
+
+        // UPGRADE 2 JS Functions
+        window.saveDailyTarget = async function() {
+            showUI(true);
+            try { await setDoc(doc(db, "Notices", "Daily_Target"), { description: document.getElementById('dailyTargetDesc').value }); showUI(false); showCustomModal("Success", "Daily Target Published!"); } catch(e) { showUI(false); }
+        }
+        window.removeDailyTarget = async function() {
+            showUI(true);
+            try { await deleteDoc(doc(db, "Notices", "Daily_Target")); showUI(false); showCustomModal("Success", "Daily Target Removed!"); document.getElementById('dailyTargetDesc').value=""; } catch(e) { showUI(false); }
         }
 
         window.saveNotice = async function() {
@@ -412,9 +458,23 @@
         window.saveCode = async function() {
             const exam = document.getElementById('salesExam').value;
             const code = document.getElementById('actCode').value;
-            if(!exam || !code) return showCustomModal("Wait", "Select Exam Series and generate code!");
+            const finalPaid = document.getElementById('finalPaidAmount').value; // UPGRADE 3
+            
+            if(!exam || !code || !finalPaid) return showCustomModal("Wait", "Select Exam, generate code, AND enter Final Amount Paid.");
+            
             showUI(true);
-            try { await setDoc(doc(db, "ActivationCodes", code), { code, examName: exam, status: "Unused" }); showUI(false); showCustomModal("Success", `Code Saved for ${exam}!`); document.getElementById('actCode').value=""; } catch(e) { showUI(false); }
+            try { 
+                await setDoc(doc(db, "ActivationCodes", code), { 
+                    code, 
+                    examName: exam, 
+                    status: "Unused", 
+                    finalPricePaid: Number(finalPaid) // Stores exactly what they paid
+                }); 
+                showUI(false); 
+                showCustomModal("Success", `Code Saved for ${exam}!`); 
+                document.getElementById('actCode').value=""; 
+                document.getElementById('finalPaidAmount').value=""; 
+            } catch(e) { showUI(false); }
         }
 
         window.saveCoupon = async function() {
