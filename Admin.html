@@ -34,25 +34,23 @@
         input, select, textarea { width: 100%; padding: 14px; background: #0f172a; border: 1px solid #334155; border-radius: 12px; color: white; font-size: 14px; outline: none; }
         input:focus, select:focus, textarea:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.2); }
         
-        .radio-group { display: flex; gap: 20px; }
-        .radio-group label { display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 14px; }
-
         .btn { background: #3b82f6; color: white; border: none; padding: 14px 20px; border-radius: 12px; font-weight: 700; cursor: pointer; width: 100%; font-size: 15px; }
-        .btn-green { background: #10b981; } .btn-red { background: #ef4444; } .btn-purple { background: #8b5cf6; }
+        .btn-green { background: #10b981; } .btn-red { background: #ef4444; } .btn-purple { background: #8b5cf6; } .btn-gray { background: #64748b; }
 
         hr { border: 1px solid #334155; margin: 30px 0; }
 
         .list-item { background: #0f172a; padding: 15px; border-radius: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #334155; }
         .list-item p { margin: 0; font-size: 14px; font-weight: 600; }
+        .list-item:hover { border-color: #3b82f6; }
         .delete-btn { background: #ef4444; color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 12px; }
 
         .processing-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; color: white; }
         .spinner { border: 4px solid rgba(255,255,255,0.2); border-top: 4px solid #3b82f6; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin-bottom: 15px; }
         @keyframes spin { 100% { transform: rotate(360deg); } }
 
-        .modal-overlay { position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.7); z-index: 1000; display: none; align-items: center; justify-content: center; opacity: 0; }
+        .modal-overlay { position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.7); z-index: 1000; display: none; align-items: center; justify-content: center; opacity: 0; padding: 20px;}
         .modal-overlay.show { display: flex; opacity: 1; }
-        .modal-box { background: #1e293b; padding: 30px; border-radius: 20px; width: 85%; max-width: 400px; text-align: center; border: 1px solid #334155; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+        .modal-box { background: #1e293b; padding: 30px; border-radius: 20px; width: 100%; max-width: 400px; text-align: center; border: 1px solid #334155; box-shadow: 0 20px 50px rgba(0,0,0,0.5); max-height: 90vh; overflow-y: auto;}
     </style>
 </head>
 <body>
@@ -69,12 +67,23 @@
         </div>
     </div>
 
+    <div id="userDetailModal" class="modal-overlay">
+        <div class="modal-box" style="text-align: left;">
+            <h2 style="color: #10b981; border:none; margin-bottom:5px; margin-top:0;">👤 User Details</h2>
+            <hr style="margin: 10px 0 20px 0;">
+            <div id="userDetailContent" style="color: #cbd5e1; font-size: 14px; line-height: 1.8; margin-bottom: 25px;">
+                </div>
+            <button class="btn btn-red" onclick="document.getElementById('userDetailModal').classList.remove('show')">Close Details</button>
+        </div>
+    </div>
+
     <div class="navbar">
         <button class="active" onclick="showSection('sec-dashboard')">📊 Dashboard</button>
+        <button onclick="showSection('sec-users')">👥 All Users</button>
         <button onclick="showSection('sec-content')">📝 Add Content</button>
         <button onclick="showSection('sec-marketing')">🚀 Banner & Notice</button>
         <button onclick="showSection('sec-sales')">💰 Sales & Codes</button>
-        <button onclick="showSection('sec-settings')">⚙️ App Settings</button>
+        <button onclick="showSection('sec-settings')">⚙️ Settings</button>
         <button onclick="showSection('sec-delete')" style="background:#ef4444;">🗑️ Remove Data</button>
     </div>
 
@@ -87,6 +96,23 @@
                 <div class="stat-card"><h3 id="statUsers">0</h3><p>Registered Users</p></div>
                 <div class="stat-card" style="border-color:#10b981;"><h3 id="statRevenue" style="color:#34d399;">₹ 0</h3><p>Total Revenue</p></div>
                 <div class="stat-card" style="border-color:#f59e0b;"><h3 id="statCodes" style="color:#fbbf24;">0</h3><p>Unused Codes</p></div>
+            </div>
+        </div>
+
+        <div id="sec-users" class="section">
+            <h2>👥 Registered Users Management</h2>
+            <p style="font-size:12px; color:#94a3b8;">Click on any user to view their A to Z complete details.</p>
+            
+            <div class="form-group">
+                <input type="text" id="userSearchInput" placeholder="🔍 Search by Name or Mobile Number..." onkeyup="filterUsers()">
+            </div>
+            
+            <div id="userListContainer" style="margin-bottom: 20px; min-height: 200px;">
+                </div>
+            
+            <div style="display:flex; justify-content:space-between; gap: 10px;">
+                <button class="btn btn-gray" id="btnPrevUser" onclick="prevUserPage()">❮ Previous 15</button>
+                <button class="btn btn-gray" id="btnNextUser" onclick="nextUserPage()">Next 15 ❯</button>
             </div>
         </div>
 
@@ -118,14 +144,13 @@
 
             <div class="form-group"><label>Test Name (Unique)</label><input type="text" id="testName" placeholder="e.g. Mock Test 01"></div>
             
-            <div class="form-group"><label>Interface Pattern</label>
-                <div class="radio-group">
-                    <label><input type="radio" name="pattern" value="TCS" checked> TCS Pattern</label>
-                    <label><input type="radio" name="pattern" value="Eduquity"> Eduquity Pattern</label>
-                </div>
+            <div class="form-group"><label style="color:#60a5fa;">TCS Pattern Link (Leave empty if not available)</label>
+                <input type="text" id="testLinkTcs" placeholder="https://...">
+            </div>
+            <div class="form-group"><label style="color:#f59e0b;">Eduquity Pattern Link (Leave empty if not available)</label>
+                <input type="text" id="testLinkEdu" placeholder="https://...">
             </div>
             
-            <div class="form-group"><label>Direct Test Link</label><input type="text" id="testLink" placeholder="https://..."></div>
             <div class="form-group"><label>PDF Solution Link (Optional)</label><input type="text" id="testPdf" placeholder="Google Drive Link"></div>
             <button class="btn btn-green" onclick="saveTest()">Save Test</button>
 
@@ -143,7 +168,6 @@
         </div>
 
         <div id="sec-marketing" class="section">
-            
             <h2>📱 App Logo Settings</h2>
             <div class="form-group"><label>App Logo Link</label><input type="text" id="appLogoLink" placeholder="https://... (Direct Image Link)"></div>
             <div style="display:flex; gap:10px;">
@@ -264,6 +288,12 @@
 
         window.allCoachingsList = [];
         window.allExamsMap = {};
+        
+        // Variables for User Pagination
+        window.allUsersData = [];
+        window.filteredUsers = [];
+        window.userCurrentPage = 1;
+        const USERS_PER_PAGE = 15;
 
         // ================= UI HELPERS =================
         window.showUI = (state) => document.getElementById('processingUI').style.display = state ? 'flex' : 'none';
@@ -275,12 +305,100 @@
             document.querySelectorAll('.navbar button').forEach(b => b.classList.remove('active'));
             document.getElementById(id).classList.add('active');
             event.target.classList.add('active');
+            
             if(id === 'sec-dashboard') loadDashboardStats();
+            if(id === 'sec-users') loadAllUsersData(); // Load users when section opens
         }
 
         window.checkTopicTest = function() {
             const cat = document.getElementById('testCategory').value;
             document.getElementById('subjectBox').style.display = (cat === 'Topic Test') ? 'block' : 'none';
+        }
+
+        // ================= USER MANAGEMENT LOGIC (NEW) =================
+        window.loadAllUsersData = async function() {
+            showUI(true);
+            try {
+                const snap = await getDocs(collection(db, "Users"));
+                window.allUsersData = [];
+                snap.forEach(doc => {
+                    window.allUsersData.push({ id: doc.id, ...doc.data() });
+                });
+                window.filteredUsers = [...window.allUsersData];
+                window.userCurrentPage = 1;
+                renderUsersList();
+                showUI(false);
+            } catch(e) { showUI(false); showCustomModal("Error", "Failed to load users."); }
+        }
+
+        window.filterUsers = function() {
+            const query = document.getElementById('userSearchInput').value.toLowerCase();
+            window.filteredUsers = window.allUsersData.filter(u => 
+                (u.name && u.name.toLowerCase().includes(query)) || 
+                (u.number && u.number.toString().includes(query))
+            );
+            window.userCurrentPage = 1;
+            renderUsersList();
+        }
+
+        window.renderUsersList = function() {
+            const list = document.getElementById('userListContainer');
+            list.innerHTML = "";
+            const start = (window.userCurrentPage - 1) * USERS_PER_PAGE;
+            const end = start + USERS_PER_PAGE;
+            const pageUsers = window.filteredUsers.slice(start, end);
+
+            if (pageUsers.length === 0) {
+                list.innerHTML = "<p style='text-align:center; color:#94a3b8;'>No users found.</p>";
+            } else {
+                pageUsers.forEach(u => {
+                    list.innerHTML += `
+                        <div class="list-item" style="cursor:pointer; border-left: 4px solid #3b82f6;" onclick="showUserDetails('${u.number}')">
+                            <div>
+                                <p style="margin:0; color:#f8fafc;">${u.name}</p>
+                                <p style="margin:0; font-size:12px; color:#94a3b8;">📞 ${u.number}</p>
+                            </div>
+                            <div style="font-weight:bold; color:#3b82f6; font-size: 18px;">➔</div>
+                        </div>
+                    `;
+                });
+            }
+
+            // Update Buttons State
+            const btnPrev = document.getElementById('btnPrevUser');
+            const btnNext = document.getElementById('btnNextUser');
+            
+            if(window.userCurrentPage === 1) { btnPrev.style.opacity = "0.4"; btnPrev.style.pointerEvents = "none"; } 
+            else { btnPrev.style.opacity = "1"; btnPrev.style.pointerEvents = "auto"; }
+            
+            if(end >= window.filteredUsers.length) { btnNext.style.opacity = "0.4"; btnNext.style.pointerEvents = "none"; } 
+            else { btnNext.style.opacity = "1"; btnNext.style.pointerEvents = "auto"; }
+        }
+
+        window.nextUserPage = function() { window.userCurrentPage++; renderUsersList(); }
+        window.prevUserPage = function() { if(window.userCurrentPage > 1) { window.userCurrentPage--; renderUsersList(); } }
+
+        window.showUserDetails = function(userNumber) {
+            const user = window.allUsersData.find(u => u.number === userNumber);
+            if(!user) return;
+
+            let seriesHtml = "<span style='color:#ef4444;'>None</span>";
+            if(user.unlockedSeries && user.unlockedSeries.length > 0) {
+                seriesHtml = user.unlockedSeries.map(s => `<span style="background:#10b981; color:white; padding:3px 8px; border-radius:6px; font-size:12px; display:inline-block; margin:2px;">${s}</span>`).join(" ");
+            }
+
+            const details = `
+                <div style="margin-bottom:8px;"><b>👤 Name:</b> <span style="color:#f8fafc;">${user.name || 'N/A'}</span></div>
+                <div style="margin-bottom:8px;"><b>📞 Mobile:</b> <span style="color:#f8fafc;">${user.number || 'N/A'}</span></div>
+                <div style="margin-bottom:8px;"><b>🎂 DOB:</b> <span style="color:#f8fafc;">${user.dob || 'N/A'}</span></div>
+                <div style="margin-bottom:8px;"><b>🔑 Password:</b> <span style="color:#f59e0b;">${user.password || 'N/A'}</span></div>
+                <div style="margin-bottom:8px;"><b>🔓 Unlocked Test Series:</b><br> ${seriesHtml}</div>
+                <hr style="border-color:#334155; margin:15px 0;">
+                <div style="margin-bottom:8px; font-size:11px; color:#64748b; word-break: break-all;"><b>Device Token:</b><br>${user.deviceToken || 'N/A'}</div>
+            `;
+            
+            document.getElementById('userDetailContent').innerHTML = details;
+            document.getElementById('userDetailModal').classList.add('show');
         }
 
         // ================= DYNAMIC DROPDOWNS FETCH =================
@@ -350,7 +468,6 @@
                     const data = doc.data();
                     if(data.status === "Used") {
                         usedCodesCount++;
-                        // UPGRADE 3: REVENUE IS NOW CALCULATED FROM ACTUAL PAID AMOUNT
                         if(data.finalPricePaid !== undefined) {
                             totalRev += Number(data.finalPricePaid);
                         } else {
@@ -374,20 +491,24 @@
             if(exam === 'NEW') exam = document.getElementById('newTestExam').value;
             const name = document.getElementById('testName').value;
             const cat = document.getElementById('testCategory').value;
-            const pat = document.querySelector('input[name="pattern"]:checked').value;
-            const link = document.getElementById('testLink').value;
+            
+            // UPGRADE 1: FETCHING TCS AND EDUQUITY LINKS INSTEAD OF DIRECT LINK
+            const tcsLink = document.getElementById('testLinkTcs').value;
+            const eduLink = document.getElementById('testLinkEdu').value;
+            
             const pdf = document.getElementById('testPdf').value;
             const subject = document.getElementById('testSubject').value;
 
-            if(!coaching || !exam || !name || !link) return showCustomModal("Wait", "Please fill required fields.");
+            if(!coaching || !exam || !name || (!tcsLink && !eduLink)) return showCustomModal("Wait", "Please fill required fields. At least one test link (TCS or Eduquity) is required.");
             if(cat === 'Topic Test' && !subject) return showCustomModal("Wait", "Please enter Subject Name for Topic Test.");
             
             showUI(true);
             try {
-                await setDoc(doc(db, "Tests", name), { coachingName: coaching, examName: exam, testName: name, category: cat, subjectName: subject, pattern: pat, directLink: link, pdfLink: pdf }, {merge:true});
+                // SAVING NEW STRUCTURE
+                await setDoc(doc(db, "Tests", name), { coachingName: coaching, examName: exam, testName: name, category: cat, subjectName: subject, tcsLink: tcsLink, eduquityLink: eduLink, pdfLink: pdf }, {merge:true});
                 fetchDropdownData();
                 showUI(false); showCustomModal("Success", "Test Saved/Updated successfully.");
-                document.getElementById('testName').value = ""; document.getElementById('testLink').value = ""; document.getElementById('testPdf').value = ""; document.getElementById('testSubject').value = "";
+                document.getElementById('testName').value = ""; document.getElementById('testLinkTcs').value = ""; document.getElementById('testLinkEdu').value = ""; document.getElementById('testPdf').value = ""; document.getElementById('testSubject').value = "";
             } catch(e) { showUI(false); showCustomModal("Error", e.message); }
         }
 
@@ -406,7 +527,6 @@
         }
 
         // ================= MARKETING =================
-        // UPGRADE 1 JS Functions
         window.saveLogo = async function() {
             showUI(true);
             try { await setDoc(doc(db, "App_Settings", "Logo"), { imageUrl: document.getElementById('appLogoLink').value }); showUI(false); showCustomModal("Success", "App Logo Updated Successfully!"); } catch(e) { showUI(false); }
@@ -425,7 +545,6 @@
             try { await deleteDoc(doc(db, "App_Settings", "Banner")); showUI(false); showCustomModal("Success", "Banner Removed Completely!"); document.getElementById('banTitle').value=""; document.getElementById('banSub').value=""; document.getElementById('banImg').value=""; } catch(e) { showUI(false); }
         }
 
-        // UPGRADE 2 JS Functions
         window.saveDailyTarget = async function() {
             showUI(true);
             try { await setDoc(doc(db, "Notices", "Daily_Target"), { description: document.getElementById('dailyTargetDesc').value }); showUI(false); showCustomModal("Success", "Daily Target Published!"); } catch(e) { showUI(false); }
@@ -458,22 +577,15 @@
         window.saveCode = async function() {
             const exam = document.getElementById('salesExam').value;
             const code = document.getElementById('actCode').value;
-            const finalPaid = document.getElementById('finalPaidAmount').value; // UPGRADE 3
+            const finalPaid = document.getElementById('finalPaidAmount').value;
             
             if(!exam || !code || !finalPaid) return showCustomModal("Wait", "Select Exam, generate code, AND enter Final Amount Paid.");
             
             showUI(true);
             try { 
-                await setDoc(doc(db, "ActivationCodes", code), { 
-                    code, 
-                    examName: exam, 
-                    status: "Unused", 
-                    finalPricePaid: Number(finalPaid) // Stores exactly what they paid
-                }); 
-                showUI(false); 
-                showCustomModal("Success", `Code Saved for ${exam}!`); 
-                document.getElementById('actCode').value=""; 
-                document.getElementById('finalPaidAmount').value=""; 
+                await setDoc(doc(db, "ActivationCodes", code), { code, examName: exam, status: "Unused", finalPricePaid: Number(finalPaid) }); 
+                showUI(false); showCustomModal("Success", `Code Saved for ${exam}!`); 
+                document.getElementById('actCode').value=""; document.getElementById('finalPaidAmount').value=""; 
             } catch(e) { showUI(false); }
         }
 
