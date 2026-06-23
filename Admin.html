@@ -71,8 +71,7 @@
         <div class="modal-box" style="text-align: left;">
             <h2 style="color: #10b981; border:none; margin-bottom:5px; margin-top:0;">👤 User Details & Moderation</h2>
             <hr style="margin: 10px 0 20px 0;">
-            <div id="userDetailContent" style="color: #cbd5e1; font-size: 14px; line-height: 1.8; margin-bottom: 25px;">
-                </div>
+            <div id="userDetailContent" style="color: #cbd5e1; font-size: 14px; line-height: 1.8; margin-bottom: 25px;"></div>
             <button class="btn btn-gray" onclick="document.getElementById('userDetailModal').classList.remove('show')">Close Window</button>
         </div>
     </div>
@@ -82,9 +81,9 @@
         <button onclick="showSection('sec-users')">👥 All Users</button>
         <button onclick="showSection('sec-utr')" style="color:#10b981;">✅ UTR Approvals</button>
         <button onclick="showSection('sec-content')">📝 Add Content</button>
-        <button onclick="showSection('sec-marketing')">🚀 Banner & Notice</button>
+        <button onclick="showSection('sec-marketing')">🚀 Banners & Links</button>
         <button onclick="showSection('sec-sales')">💰 Sales & Codes</button>
-        <button onclick="showSection('sec-settings')">⚙️ Settings</button>
+        <button onclick="showSection('sec-settings')">⚙️ Settings (UPI)</button>
         <button onclick="showSection('sec-delete')" style="background:#ef4444;">🗑️ Remove Data</button>
     </div>
 
@@ -103,14 +102,8 @@
         <div id="sec-users" class="section">
             <h2>👥 Registered Users Management</h2>
             <p style="font-size:12px; color:#94a3b8;">Click on any user to view details, ban them, or manually manage their unlocked series.</p>
-            
-            <div class="form-group">
-                <input type="text" id="userSearchInput" placeholder="🔍 Search by Name or Mobile Number..." onkeyup="filterUsers()">
-            </div>
-            
-            <div id="userListContainer" style="margin-bottom: 20px; min-height: 200px;">
-                </div>
-            
+            <div class="form-group"><input type="text" id="userSearchInput" placeholder="🔍 Search by Name or Mobile Number..." onkeyup="filterUsers()"></div>
+            <div id="userListContainer" style="margin-bottom: 20px; min-height: 200px;"></div>
             <div style="display:flex; justify-content:space-between; gap: 10px;">
                 <button class="btn btn-gray" id="btnPrevUser" onclick="prevUserPage()">❮ Previous 15</button>
                 <button class="btn btn-gray" id="btnNextUser" onclick="nextUserPage()">Next 15 ❯</button>
@@ -125,77 +118,51 @@
         </div>
 
         <div id="sec-content" class="section">
-            <h2>Add / Update Test</h2>
-            
-            <div class="form-group"><label>Select Coaching</label>
-                <select id="testCoaching" onchange="updateTestExams()"><option value="">Loading...</option></select>
-            </div>
-            
-            <div class="form-group"><label>Select Exam (Test Series)</label>
-                <select id="testExam" onchange="checkNewExam()"><option value="">Select Coaching First</option></select>
-                <input type="text" id="newTestExam" placeholder="Type new Exam Name..." style="display:none; margin-top:10px;">
-            </div>
-
+            <h2>📝 Add / Update Test</h2>
+            <div class="form-group"><label>Select Coaching</label><select id="testCoaching" onchange="updateTestExams()"><option value="">Loading...</option></select></div>
+            <div class="form-group"><label>Select Exam (Test Series)</label><select id="testExam" onchange="checkNewExam()"><option value="">Select Coaching First</option></select><input type="text" id="newTestExam" placeholder="Type new Exam Name..." style="display:none; margin-top:10px;"></div>
             <div class="form-group"><label>Test Category</label>
                 <select id="testCategory" onchange="checkTopicTest()">
-                    <option value="Paid Test">Paid Test</option>
-                    <option value="Free Test">Free Test</option>
-                    <option value="Mini Mock">Mini Mock</option>
-                    <option value="Topic Test">Topic Wise Test</option>
+                    <option value="Paid Test">Paid Test</option><option value="Free Test">Free Test</option><option value="Mini Mock">Mini Mock</option><option value="Topic Test">Topic Wise Test</option>
                 </select>
             </div>
 
-            <div class="form-group" id="subjectBox" style="display:none;">
-                <label style="color:#10b981;">Subject Name (For Topic Test)</label>
-                <input type="text" id="testSubject" placeholder="e.g. Mathematics, English">
-            </div>
+            <datalist id="existingSubjectsList"></datalist>
+            <div class="form-group" id="subjectBox" style="display:none;"><label style="color:#10b981;">Subject Name (For Topic Test)</label><input type="text" id="testSubject" list="existingSubjectsList" placeholder="Click to select or type new e.g. Mathematics"></div>
 
             <div class="form-group"><label>Test Name (Unique)</label><input type="text" id="testName" placeholder="e.g. Mock Test 01"></div>
-            
-            <div class="form-group"><label style="color:#60a5fa;">TCS Pattern Link (Leave empty if not available)</label>
-                <input type="text" id="testLinkTcs" placeholder="https://...">
-            </div>
-            <div class="form-group"><label style="color:#f59e0b;">Eduquity Pattern Link (Leave empty if not available)</label>
-                <input type="text" id="testLinkEdu" placeholder="https://...">
-            </div>
-            
+            <div class="form-group"><label style="color:#60a5fa;">TCS Pattern Link (Leave empty if not available)</label><input type="text" id="testLinkTcs" placeholder="https://..."></div>
+            <div class="form-group"><label style="color:#f59e0b;">Eduquity Pattern Link (Leave empty if not available)</label><input type="text" id="testLinkEdu" placeholder="https://..."></div>
             <div class="form-group"><label>PDF Solution Link (Optional)</label><input type="text" id="testPdf" placeholder="Google Drive Link"></div>
             <button class="btn btn-green" onclick="saveTest()">Save Test</button>
 
             <hr>
-            <h2>Add Coaching</h2>
+            <h2>🏢 Add Coaching</h2>
             <div class="form-group"><label>Coaching Name</label><input type="text" id="coachName"></div>
             <div class="form-group"><label>Banner Image Link (Optional)</label><input type="text" id="coachImg" placeholder="https://..."></div>
-            <button class="btn" onclick="saveCoaching()">Add Coaching</button>
+            <div style="display:flex; gap:10px;">
+                <button class="btn" onclick="saveCoaching()">Add / Update</button>
+                <button class="btn btn-red" onclick="removeCoachingBanner()">Remove Banner</button>
+            </div>
 
             <hr>
-            <h2>🖼️ Set Exam Banner</h2>
-            <div class="form-group"><label>Select Coaching</label>
-                <select id="bannerCoaching" onchange="updateBannerExams()"><option value="">Loading...</option></select>
-            </div>
-            <div class="form-group"><label>Select Exam</label>
-                <select id="bannerExam"><option value="">Select Coaching First</option></select>
-            </div>
-            <div class="form-group"><label>Exam Banner Link (Optional)</label><input type="text" id="examBannerImg" placeholder="https://..."></div>
-            <button class="btn btn-purple" onclick="saveExamBanner()">Save Exam Banner</button>
+            <h2>✨ Add Custom Card (Free Class / Live Course)</h2>
+            <p style="font-size:12px; color:#94a3b8;">This will show as a separate click-able card inside the selected exam.</p>
+            <div class="form-group"><label>Select Coaching</label><select id="extraCoaching" onchange="updateExtraExams()"></select></div>
+            <div class="form-group"><label>Select Exam</label><select id="extraExam"></select></div>
+            <div class="form-group"><label>Card Title</label><input type="text" id="extraTitle" placeholder="e.g. Live Classes"></div>
+            <div class="form-group"><label>Card Link URL</label><input type="text" id="extraLink" placeholder="https://youtube.com/..."></div>
+            <button class="btn btn-purple" onclick="saveExtraCard()">Add Custom Card</button>
 
             <hr>
-            <h2>Add Free Notes (PDF)</h2>
+            <h2>📚 Add Free Notes (PDF)</h2>
             <div class="form-group"><label>PDF Title</label><input type="text" id="noteTitle"></div>
             <div class="form-group"><label>Direct Link</label><input type="text" id="noteLink"></div>
             <button class="btn btn-purple" onclick="saveNote()">Add PDF Notes</button>
         </div>
 
         <div id="sec-marketing" class="section">
-            <h2>📱 App Logo Settings</h2>
-            <div class="form-group"><label>App Logo Link</label><input type="text" id="appLogoLink" placeholder="https://... (Direct Image Link)"></div>
-            <div style="display:flex; gap:10px;">
-                <button class="btn btn-purple" onclick="saveLogo()">Update Logo</button>
-                <button class="btn btn-red" onclick="removeLogo()">Remove Logo</button>
-            </div>
-            
-            <hr>
-            <h2>🖼️ App Main Banner</h2>
+            <h2>🖼️ App Main Banner (Home Screen)</h2>
             <div class="form-group"><label>Banner Title</label><input type="text" id="banTitle" placeholder="Premium Test Series"></div>
             <div class="form-group"><label>Banner Subtitle</label><input type="text" id="banSub" placeholder="India's Best Platform..."></div>
             <div class="form-group"><label>Banner Background Image URL (Optional)</label><input type="text" id="banImg" placeholder="https://... (Drive/Imgur Link)"></div>
@@ -205,17 +172,32 @@
             </div>
 
             <hr>
-            <h2>🎯 Daily Target</h2>
-            <div class="form-group"><label>Target Message / Description</label><textarea id="dailyTargetDesc" rows="3" placeholder="e.g. Complete chapter 1, revise mock 2..."></textarea></div>
+            <h2>🖼️ Set Exam Banner (Landscape 16:9)</h2>
+            <div class="form-group"><label>Select Coaching</label><select id="bannerCoaching" onchange="updateBannerExams()"><option value="">Loading...</option></select></div>
+            <div class="form-group"><label>Select Exam</label><select id="bannerExam"><option value="">Select Coaching First</option></select></div>
+            <div class="form-group"><label>Exam Banner Link (Optional)</label><input type="text" id="examBannerImg" placeholder="https://..."></div>
             <div style="display:flex; gap:10px;">
-                <button class="btn btn-purple" onclick="saveDailyTarget()">Publish Daily Target</button>
-                <button class="btn btn-red" onclick="removeDailyTarget()">Remove Target</button>
+                <button class="btn btn-purple" onclick="saveExamBanner()">Save Exam Banner</button>
+                <button class="btn btn-red" onclick="removeExamBanner()">Remove Banner</button>
             </div>
 
             <hr>
-            <h2>📢 Announcement Notice</h2>
-            <div class="form-group"><label>Notice Title</label><input type="text" id="notTitle" placeholder="e.g. Server Maintenance"></div>
-            <div class="form-group"><label>Message</label><textarea id="notDesc" rows="3"></textarea></div>
+            <h2>📱 App Logo Settings</h2>
+            <div class="form-group"><label>App Logo Link</label><input type="text" id="appLogoLink" placeholder="https://... (Direct Image Link)"></div>
+            <div style="display:flex; gap:10px;">
+                <button class="btn btn-purple" onclick="saveLogo()">Update Logo</button>
+                <button class="btn btn-red" onclick="removeLogo()">Remove Logo</button>
+            </div>
+
+            <hr>
+            <h2>🎯 Daily Target & 📢 Notice</h2>
+            <div class="form-group"><label>Daily Target Message</label><textarea id="dailyTargetDesc" rows="3"></textarea></div>
+            <div style="display:flex; gap:10px; margin-bottom: 20px;">
+                <button class="btn btn-purple" onclick="saveDailyTarget()">Publish Target</button>
+                <button class="btn btn-red" onclick="removeDailyTarget()">Remove Target</button>
+            </div>
+            <div class="form-group"><label>Notice Title</label><input type="text" id="notTitle"></div>
+            <div class="form-group"><label>Notice Message</label><textarea id="notDesc" rows="3"></textarea></div>
             <div style="display:flex; gap:10px;">
                 <button class="btn btn-green" onclick="saveNotice()">Publish Notice</button>
                 <button class="btn btn-red" onclick="removeNotice()">Remove Notice</button>
@@ -224,13 +206,9 @@
 
         <div id="sec-sales" class="section">
             <h2>💰 Select Test Series (Exam)</h2>
-            <div class="form-group"><label>Coaching</label>
-                <select id="salesCoaching" onchange="updateSalesExams()"><option value="">Loading...</option></select>
-            </div>
-            <div class="form-group"><label>Exam Series</label>
-                <select id="salesExam"><option value="">Select Coaching First</option></select>
-            </div>
-
+            <div class="form-group"><label>Coaching</label><select id="salesCoaching" onchange="updateSalesExams()"><option value="">Loading...</option></select></div>
+            <div class="form-group"><label>Exam Series</label><select id="salesExam"><option value="">Select Coaching First</option></select></div>
+            
             <hr>
             <h2>Series Pricing</h2>
             <div class="form-group"><label>Set Price for selected Exam (₹)</label><input type="number" id="basePrice" placeholder="e.g. 499"></div>
@@ -238,11 +216,7 @@
 
             <hr>
             <h2>Generate Activation Code</h2>
-            <p style="font-size:12px; color:#94a3b8;">This code will unlock the Exam selected above.</p>
-            
-            <div class="form-group"><label style="color:#10b981;">Final Amount Paid by User (₹) - For Revenue Calc</label>
-            <input type="number" id="finalPaidAmount" placeholder="e.g. 45"></div>
-
+            <div class="form-group"><label style="color:#10b981;">Final Amount Paid by User (₹) - For Revenue Calc</label><input type="number" id="finalPaidAmount" placeholder="e.g. 45"></div>
             <div class="form-group"><input type="text" id="actCode" placeholder="Click to Generate" readonly style="font-weight:bold; color:#60a5fa; text-align:center; letter-spacing:2px;"></div>
             <div style="display:flex; gap:10px;">
                 <button class="btn btn-green" onclick="generateRandomCode()">⚡ Generate</button>
@@ -257,18 +231,32 @@
         </div>
 
         <div id="sec-settings" class="section">
-            <h2>Admin Support Links</h2>
-            <p style="font-size:12px; color:#94a3b8;">Leave empty to remove a specific link.</p>
+            <h2>⚙️ UPI Payment Config (Rotation Control)</h2>
+            <p style="font-size:12px; color:#94a3b8;">Control how UPI IDs are shown to users during payment.</p>
+            <div class="form-group"><label style="color:#10b981;">UPI ID 1</label><input type="text" id="upiId1" placeholder="first_account@ybl"></div>
+            <div class="form-group"><label style="color:#60a5fa;">UPI ID 2</label><input type="text" id="upiId2" placeholder="second_account@ybl"></div>
+            <div class="form-group"><label>Rotation Mode</label>
+                <select id="upiMode">
+                    <option value="rotate">Automatic Rotation (1 -> 2 -> 1)</option>
+                    <option value="upi1">Always Use UPI 1</option>
+                    <option value="upi2">Always Use UPI 2</option>
+                </select>
+            </div>
+            <button class="btn btn-green" onclick="saveUpiConfig()">Save UPI Settings</button>
+
+            <hr>
+            <h2>📞 Admin Support Links</h2>
+            <p style="font-size:12px; color:#94a3b8;">Leave empty to hide a specific link from users.</p>
             <div class="form-group"><label>Telegram Link</label><input type="text" id="supTg" placeholder="https://t.me/..."></div>
             <div class="form-group"><label>YouTube Link</label><input type="text" id="supYt" placeholder="https://youtube.com/..."></div>
             <div class="form-group"><label>WhatsApp Link</label><input type="text" id="supWa" placeholder="https://wa.me/..."></div>
             <div class="form-group"><label>Other Link (App/Website)</label><input type="text" id="supOther" placeholder="https://..."></div>
-            <button class="btn" onclick="saveSupport()">Update Support Links</button>
+            <button class="btn btn-purple" onclick="saveSupport()">Update Support Links</button>
 
             <hr>
             <h2>Payment Instructions (How to Buy)</h2>
-            <div class="form-group"><label>Instructions Text</label><textarea id="payInst" rows="3" placeholder="Pay via UPI to 9876543210@ybl..."></textarea></div>
-            <button class="btn btn-green" onclick="savePaymentInfo()">Save Instructions</button>
+            <div class="form-group"><label>Instructions Text</label><textarea id="payInst" rows="3" placeholder="Pay via UPI..."></textarea></div>
+            <button class="btn" onclick="savePaymentInfo()">Save Instructions</button>
         </div>
 
         <div id="sec-delete" class="section" style="border-color:#ef4444;">
@@ -279,6 +267,7 @@
                     <option value="">-- Select Category --</option>
                     <option value="Coachings">Coachings</option>
                     <option value="Tests">Mock Tests</option>
+                    <option value="ExtraCards">Extra Custom Cards</option>
                     <option value="Notes">Free Notes (PDF)</option>
                     <option value="Coupons">Discount Coupons</option>
                     <option value="ActivationCodes">Activation Codes</option>
@@ -291,7 +280,6 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        // IMPORTED updateDoc, arrayUnion, arrayRemove, query, where FOR NEW FEATURES
         import { getFirestore, doc, setDoc, getDoc, getDocs, collection, deleteDoc, updateDoc, arrayUnion, arrayRemove, query, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -336,7 +324,51 @@
             document.getElementById('subjectBox').style.display = (cat === 'Topic Test') ? 'block' : 'none';
         }
 
-        // ================= NEW UTR VERIFICATION & APPROVAL LOGIC =================
+        // ================= PRE-FILL DATA SYSTEM (PREVENTS DATA LOSS) =================
+        window.loadPreFillData = async function() {
+            try {
+                // Support Links
+                const supSnap = await getDoc(doc(db, "App_Settings", "Support"));
+                if(supSnap.exists()) {
+                    document.getElementById('supTg').value = supSnap.data().telegram || "";
+                    document.getElementById('supYt').value = supSnap.data().youtube || "";
+                    document.getElementById('supWa').value = supSnap.data().whatsapp || "";
+                    document.getElementById('supOther').value = supSnap.data().other || "";
+                }
+                // UPI Config
+                const upiSnap = await getDoc(doc(db, "App_Settings", "PaymentConfig"));
+                if(upiSnap.exists()) {
+                    document.getElementById('upiId1').value = upiSnap.data().upi1 || "";
+                    document.getElementById('upiId2').value = upiSnap.data().upi2 || "";
+                    document.getElementById('upiMode').value = upiSnap.data().mode || "rotate";
+                }
+                // Banner Config
+                const banSnap = await getDoc(doc(db, "App_Settings", "Banner"));
+                if(banSnap.exists()) {
+                    document.getElementById('banTitle').value = banSnap.data().title || "";
+                    document.getElementById('banSub').value = banSnap.data().subtitle || "";
+                    document.getElementById('banImg').value = banSnap.data().imageUrl || "";
+                }
+                const logoSnap = await getDoc(doc(db, "App_Settings", "Logo"));
+                if(logoSnap.exists()) document.getElementById('appLogoLink').value = logoSnap.data().imageUrl || "";
+                
+                // Notices
+                const noticeSnap = await getDoc(doc(db, "Notices", "Latest_Notice"));
+                if(noticeSnap.exists()) {
+                    document.getElementById('notTitle').value = noticeSnap.data().title || "";
+                    document.getElementById('notDesc').value = noticeSnap.data().description || "";
+                }
+                const targetSnap = await getDoc(doc(db, "Notices", "Daily_Target"));
+                if(targetSnap.exists()) document.getElementById('dailyTargetDesc').value = targetSnap.data().description || "";
+
+                // Payments Info
+                const paySnap = await getDoc(doc(db, "App_Settings", "PaymentInfo"));
+                if(paySnap.exists()) document.getElementById('payInst').value = paySnap.data().instructions || "";
+
+            } catch(e) { console.log("Prefill error", e); }
+        }
+
+        // ================= UTR VERIFICATION & APPROVAL LOGIC =================
         window.loadPendingUTRs = async function() {
             showUI(true);
             const container = document.getElementById('utrListContainer');
@@ -370,14 +402,9 @@
             if(!confirm(`Approve UTR ${utr} and unlock ${examName}?`)) return;
             showUI(true);
             try {
-                // Update UTR Status
                 await updateDoc(doc(db, "Pending_Payments", utr), { status: "Used" });
-                // Unlock Series for User
                 await updateDoc(doc(db, "Users", userNum), { unlockedSeries: arrayUnion(examName) });
-                
-                showUI(false); 
-                loadPendingUTRs(); 
-                showCustomModal("Success", "Payment Approved & Test Series Unlocked for the user!");
+                showUI(false); loadPendingUTRs(); showCustomModal("Success", "Payment Approved & Series Unlocked!");
             } catch(e) { showUI(false); showCustomModal("Error", e.message); }
         }
 
@@ -390,7 +417,7 @@
             } catch(e) { showUI(false); showCustomModal("Error", e.message); }
         }
 
-        // ================= USER MANAGEMENT LOGIC =================
+        // ================= USER MANAGEMENT LOGIC & MODERATION =================
         window.loadAllUsersData = async function() {
             showUI(true);
             try {
@@ -453,29 +480,24 @@
                     const index = window.allUsersData.findIndex(u => u.number === userNum);
                     if(index !== -1) window.allUsersData[index] = uData;
                     window.showUserDetails(userNum, uData);
-                    renderUsersList(); // Update dots in main list
+                    renderUsersList(); 
                 }
             } catch(e) { console.error(e); }
         }
 
-        // ================= ADVANCED MODERATION UI =================
         window.showUserDetails = function(userNumber, passedUser = null) {
             const user = passedUser || window.allUsersData.find(u => u.number === userNumber);
             if(!user) return;
 
-            // Check Ban Status
             let banStatus = "<span style='color:#10b981;'>🟢 Active</span>";
             if (user.isBanned) {
                 if (user.banUntil && new Date(user.banUntil) > new Date()) {
                     banStatus = `<span style='color:#ef4444;'>🔴 Banned until ${new Date(user.banUntil).toLocaleString()}</span>`;
                 } else if (!user.banUntil) {
                     banStatus = "<span style='color:#ef4444;'>🔴 Permanently Banned</span>";
-                } else {
-                    banStatus = "<span style='color:#10b981;'>🟢 Active (Previous Ban Expired)</span>";
-                }
+                } else { banStatus = "<span style='color:#10b981;'>🟢 Active (Ban Expired)</span>"; }
             }
 
-            // Series List with Unlock Buttons
             let seriesHtml = "<p style='color:#94a3b8; font-size:12px; margin:0;'>No active series found.</p>";
             if(user.unlockedSeries && user.unlockedSeries.length > 0) {
                 seriesHtml = user.unlockedSeries.map(s => `
@@ -485,10 +507,7 @@
                     </div>`).join("");
             }
 
-            // Populate all available exams for manual unlock dropdown
-            let unlockOptions = Object.keys(window.allExamsMap).map(c => 
-                `<optgroup label="${c}">${Array.from(window.allExamsMap[c]).map(e => `<option value="${e}">${e}</option>`).join('')}</optgroup>`
-            ).join('');
+            let unlockOptions = Object.keys(window.allExamsMap).map(c => `<optgroup label="${c}">${Array.from(window.allExamsMap[c]).map(e => `<option value="${e}">${e}</option>`).join('')}</optgroup>`).join('');
 
             const details = `
                 <div style="margin-bottom:8px;"><b>👤 Name:</b> <span style="color:#f8fafc;">${user.name || 'N/A'}</span></div>
@@ -509,13 +528,9 @@
                 <hr style="border-color:#334155; margin:15px 0;">
                 <h3 style="margin-top:0; color:#3b82f6; font-size:15px;">🔓 User Unlocked Series</h3>
                 <div style="margin-bottom:15px;">${seriesHtml}</div>
-                
                 <p style="margin:0 0 5px 0; font-size:12px; color:#10b981; font-weight:bold;">Manual Add/Unlock Series:</p>
                 <div style="display:flex; gap:10px;">
-                    <select id="manualUnlockSeriesSelect" style="padding:8px; width:70%; font-size:12px; background:#0f172a;">
-                        <option value="">-- Select Exam Series --</option>
-                        ${unlockOptions}
-                    </select>
+                    <select id="manualUnlockSeriesSelect" style="padding:8px; width:70%; font-size:12px; background:#0f172a;"><option value="">-- Select Exam Series --</option>${unlockOptions}</select>
                     <button class="btn btn-green" style="padding:8px; font-size:12px; width:30%;" onclick="manualUnlockUserSeries('${user.number}')">Unlock</button>
                 </div>
             `;
@@ -527,15 +542,12 @@
         window.banUser = async function(userNum, hours) {
             let banUntil = null;
             if(hours !== 'perm') {
-                const date = new Date();
-                date.setHours(date.getHours() + parseInt(hours));
-                banUntil = date.toISOString();
+                const date = new Date(); date.setHours(date.getHours() + parseInt(hours)); banUntil = date.toISOString();
             }
             showUI(true);
             try {
                 await updateDoc(doc(db, "Users", userNum), { isBanned: true, banUntil: banUntil });
-                await refreshUserDetails(userNum);
-                showUI(false);
+                await refreshUserDetails(userNum); showUI(false);
             } catch(e) { showUI(false); showCustomModal("Error", e.message); }
         }
 
@@ -543,8 +555,7 @@
             showUI(true);
             try {
                 await updateDoc(doc(db, "Users", userNum), { isBanned: false, banUntil: null });
-                await refreshUserDetails(userNum);
-                showUI(false);
+                await refreshUserDetails(userNum); showUI(false);
             } catch(e) { showUI(false); showCustomModal("Error", e.message); }
         }
 
@@ -553,8 +564,7 @@
             showUI(true);
             try {
                 await updateDoc(doc(db, "Users", userNum), { unlockedSeries: arrayRemove(seriesName) });
-                await refreshUserDetails(userNum);
-                showUI(false);
+                await refreshUserDetails(userNum); showUI(false);
             } catch(e) { showUI(false); showCustomModal("Error", e.message); }
         }
 
@@ -564,12 +574,11 @@
             showUI(true);
             try {
                 await updateDoc(doc(db, "Users", userNum), { unlockedSeries: arrayUnion(seriesName) });
-                await refreshUserDetails(userNum);
-                showUI(false);
+                await refreshUserDetails(userNum); showUI(false);
             } catch(e) { showUI(false); showCustomModal("Error", e.message); }
         }
 
-        // ================= DYNAMIC DROPDOWNS FETCH =================
+        // ================= DYNAMIC DROPDOWNS FETCH (SMART DATALIST ADDED) =================
         window.fetchDropdownData = async function() {
             try {
                 const cSnap = await getDocs(collection(db, "Coachings"));
@@ -578,6 +587,8 @@
 
                 const tSnap = await getDocs(collection(db, "Tests"));
                 window.allExamsMap = {};
+                let uniqueSubjectsList = new Set();
+
                 window.allCoachingsList.forEach(c => window.allExamsMap[c] = new Set());
                 tSnap.forEach(d => {
                     const data = d.data();
@@ -585,7 +596,14 @@
                         if(!window.allExamsMap[data.coachingName]) window.allExamsMap[data.coachingName] = new Set();
                         window.allExamsMap[data.coachingName].add(data.examName);
                     }
+                    if(data.subjectName) uniqueSubjectsList.add(data.subjectName);
                 });
+
+                // Auto-Suggest Setup
+                let subOptions = "";
+                uniqueSubjectsList.forEach(s => subOptions += `<option value="${s}">`);
+                document.getElementById('existingSubjectsList').innerHTML = subOptions;
+
                 populateSelects();
             } catch(e) { console.error(e); }
         };
@@ -594,7 +612,8 @@
             const cOptions = `<option value="">-- Select Coaching --</option>` + window.allCoachingsList.map(c => `<option value="${c}">${c}</option>`).join('');
             document.getElementById('testCoaching').innerHTML = cOptions;
             document.getElementById('salesCoaching').innerHTML = cOptions;
-            document.getElementById('bannerCoaching').innerHTML = cOptions; // NEW BANNER COACHING
+            document.getElementById('bannerCoaching').innerHTML = cOptions;
+            document.getElementById('extraCoaching').innerHTML = cOptions;
         }
 
         window.updateTestExams = function() {
@@ -608,9 +627,7 @@
             document.getElementById('newTestExam').style.display = 'none';
         }
 
-        window.checkNewExam = function() {
-            document.getElementById('newTestExam').style.display = (document.getElementById('testExam').value === 'NEW') ? 'block' : 'none';
-        }
+        window.checkNewExam = function() { document.getElementById('newTestExam').style.display = (document.getElementById('testExam').value === 'NEW') ? 'block' : 'none'; }
 
         window.updateSalesExams = function() {
             const c = document.getElementById('salesCoaching').value;
@@ -630,6 +647,15 @@
             eSelect.innerHTML = eOptions;
         }
 
+        window.updateExtraExams = function() {
+            const c = document.getElementById('extraCoaching').value;
+            const eSelect = document.getElementById('extraExam');
+            if(!c) { eSelect.innerHTML = `<option value="">-- Select Coaching First --</option>`; return; }
+            let eOptions = `<option value="">-- Select Exam --</option>`;
+            if(window.allExamsMap[c]) Array.from(window.allExamsMap[c]).forEach(e => { eOptions += `<option value="${e}">${e}</option>`; });
+            eSelect.innerHTML = eOptions;
+        }
+
         // ================= DASHBOARD STATS =================
         window.loadDashboardStats = async function() {
             showUI(true);
@@ -637,12 +663,8 @@
                 let userCount = (await getDocs(collection(db, "Users"))).size;
                 let usedCodesCount = 0; let unusedCodesCount = 0; let totalRev = 0;
                 
-                // Also add Revenue from Pending_Payments that are 'Used'
                 const paySnap = await getDocs(query(collection(db, "Pending_Payments"), where("status", "==", "Used")));
-                paySnap.forEach(d => {
-                    const data = d.data();
-                    if(data.amount) totalRev += Number(data.amount);
-                });
+                paySnap.forEach(d => { if(d.data().amount) totalRev += Number(d.data().amount); });
 
                 const priceSnap = await getDocs(collection(db, "Pricing"));
                 let priceMap = {};
@@ -653,11 +675,7 @@
                     const data = doc.data();
                     if(data.status === "Used") {
                         usedCodesCount++;
-                        if(data.finalPricePaid !== undefined) {
-                            totalRev += Number(data.finalPricePaid);
-                        } else {
-                            totalRev += priceMap[data.examName] || 499;
-                        }
+                        if(data.finalPricePaid !== undefined) { totalRev += Number(data.finalPricePaid); } else { totalRev += priceMap[data.examName] || 499; }
                     }
                     if(data.status === "Unused") unusedCodesCount++;
                 });
@@ -695,9 +713,30 @@
 
         window.saveCoaching = async function() {
             const name = document.getElementById('coachName').value, img = document.getElementById('coachImg').value;
-            if(!name) return;
+            if(!name) return showCustomModal("Wait", "Enter Coaching Name");
             showUI(true);
-            try { await setDoc(doc(db, "Coachings", name), { name: name, banner: img }); fetchDropdownData(); showUI(false); showCustomModal("Success", "Coaching Added!"); document.getElementById('coachName').value=""; document.getElementById('coachImg').value=""; } catch(e) { showUI(false); }
+            try { await setDoc(doc(db, "Coachings", name), { name: name, banner: img }, {merge:true}); fetchDropdownData(); showUI(false); showCustomModal("Success", "Coaching Saved!"); document.getElementById('coachName').value=""; document.getElementById('coachImg').value=""; } catch(e) { showUI(false); }
+        }
+
+        window.removeCoachingBanner = async function() {
+            const name = document.getElementById('coachName').value;
+            if(!name) return showCustomModal("Wait", "Type the Coaching Name to remove its banner.");
+            showUI(true);
+            try { await updateDoc(doc(db, "Coachings", name), { banner: "" }); showUI(false); showCustomModal("Success", "Coaching Banner Removed!"); } catch(e) { showUI(false); showCustomModal("Error", e.message); }
+        }
+
+        window.saveExtraCard = async function() {
+            const exam = document.getElementById('extraExam').value;
+            const title = document.getElementById('extraTitle').value;
+            const link = document.getElementById('extraLink').value;
+            if(!exam || !title || !link) return showCustomModal("Wait", "Fill all Extra Card Details.");
+            showUI(true);
+            try {
+                const docId = exam.replace(/\s+/g, '_') + "_" + Date.now();
+                await setDoc(doc(db, "ExtraCards", docId), { examName: exam, title: title, link: link });
+                showUI(false); showCustomModal("Success", "Custom Card Added Successfully!");
+                document.getElementById('extraTitle').value=""; document.getElementById('extraLink').value="";
+            } catch(e) { showUI(false); showCustomModal("Error", e.message); }
         }
 
         window.saveExamBanner = async function() {
@@ -710,6 +749,13 @@
                 showUI(false); showCustomModal("Success", `Banner link saved for ${exam}`);
                 document.getElementById('examBannerImg').value = "";
             } catch(e) { showUI(false); showCustomModal("Error", e.message); }
+        }
+
+        window.removeExamBanner = async function() {
+            const exam = document.getElementById('bannerExam').value;
+            if(!exam) return showCustomModal("Wait", "Select Exam first!");
+            showUI(true);
+            try { await updateDoc(doc(db, "Exams", exam), { banner: "" }); showUI(false); showCustomModal("Success", `Banner removed from ${exam}`); } catch(e) { showUI(false); showCustomModal("Error", e.message); }
         }
 
         window.saveNote = async function() {
@@ -771,9 +817,7 @@
             const exam = document.getElementById('salesExam').value;
             const code = document.getElementById('actCode').value;
             const finalPaid = document.getElementById('finalPaidAmount').value;
-            
             if(!exam || !code || !finalPaid) return showCustomModal("Wait", "Select Exam, generate code, AND enter Final Amount Paid.");
-            
             showUI(true);
             try { 
                 await setDoc(doc(db, "ActivationCodes", code), { code, examName: exam, status: "Unused", finalPricePaid: Number(finalPaid) }); 
@@ -790,15 +834,35 @@
             try { await setDoc(doc(db, "Coupons", code), { code, examName: exam, discount: dis, status: "Active" }); showUI(false); showCustomModal("Success", `Coupon Activated for ${exam}!`); document.getElementById('cupCode').value=""; document.getElementById('cupDis').value=""; } catch(e) { showUI(false); }
         }
 
+        // ================= SETTINGS (UPI & SUPPORT) =================
+        window.saveUpiConfig = async function() {
+            showUI(true);
+            try {
+                await setDoc(doc(db, "App_Settings", "PaymentConfig"), {
+                    upi1: document.getElementById('upiId1').value,
+                    upi2: document.getElementById('upiId2').value,
+                    mode: document.getElementById('upiMode').value
+                }, {merge: true});
+                showUI(false); showCustomModal("Success", "UPI Config Settings Updated!");
+            } catch(e) { showUI(false); showCustomModal("Error", e.message); }
+        }
+
+        window.saveSupport = async function() {
+            showUI(true);
+            try { 
+                await setDoc(doc(db, "App_Settings", "Support"), { 
+                    telegram: document.getElementById('supTg').value, 
+                    youtube: document.getElementById('supYt').value, 
+                    whatsapp: document.getElementById('supWa').value, 
+                    other: document.getElementById('supOther').value 
+                }, {merge: true}); 
+                showUI(false); showCustomModal("Success", "Support Links Updated! No links were lost."); 
+            } catch(e) { showUI(false); }
+        }
+
         window.savePaymentInfo = async function() {
             showUI(true);
             try { await setDoc(doc(db, "App_Settings", "PaymentInfo"), { instructions: document.getElementById('payInst').value }); showUI(false); showCustomModal("Success", "Payment Instructions Saved!"); } catch(e) { showUI(false); }
-        }
-
-        // ================= SETTINGS =================
-        window.saveSupport = async function() {
-            showUI(true);
-            try { await setDoc(doc(db, "App_Settings", "Support"), { telegram: document.getElementById('supTg').value, youtube: document.getElementById('supYt').value, whatsapp: document.getElementById('supWa').value, other: document.getElementById('supOther').value }); showUI(false); showCustomModal("Success", "Support Links Updated!"); } catch(e) { showUI(false); }
         }
 
         // ================= REMOVE DATA =================
@@ -818,6 +882,7 @@
                     let displayName = docId;
                     if(collectionName === "Tests") displayName = `[Test] ${doc.data().testName || docId}`;
                     if(collectionName === "Coachings") displayName = `[Coaching] ${doc.data().name || docId}`;
+                    if(collectionName === "ExtraCards") displayName = `[Extra Card] ${doc.data().title} (in ${doc.data().examName})`;
                     if(collectionName === "Notes") displayName = `[PDF] ${doc.data().title || docId}`;
                     if(collectionName === "Coupons") displayName = `[Coupon] ${doc.data().code || docId} (${doc.data().examName})`;
                     if(collectionName === "ActivationCodes") displayName = `[Code] ${doc.data().code || docId} (${doc.data().examName})`;
@@ -845,7 +910,14 @@
             } catch(e) { showUI(false); showCustomModal("Error", e.message); }
         }
 
-        window.onload = () => { fetchDropdownData(); loadDashboardStats(); };
+        // Initialize System
+        window.onload = async () => { 
+            showUI(true);
+            await fetchDropdownData(); 
+            await loadPreFillData(); 
+            await loadDashboardStats(); 
+            showUI(false);
+        };
     </script>
 </body>
 </html>
