@@ -50,7 +50,7 @@
 
         .modal-overlay { position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.7); z-index: 1000; display: none; align-items: center; justify-content: center; opacity: 0; padding: 20px;}
         .modal-overlay.show { display: flex; opacity: 1; }
-        .modal-box { background: #1e293b; padding: 30px; border-radius: 20px; width: 100%; max-width: 400px; text-align: center; border: 1px solid #334155; box-shadow: 0 20px 50px rgba(0,0,0,0.5); max-height: 90vh; overflow-y: auto;}
+        .modal-box { background: #1e293b; padding: 30px; border-radius: 20px; width: 100%; max-width: 450px; text-align: center; border: 1px solid #334155; box-shadow: 0 20px 50px rgba(0,0,0,0.5); max-height: 90vh; overflow-y: auto;}
     </style>
 </head>
 <body>
@@ -69,17 +69,18 @@
 
     <div id="userDetailModal" class="modal-overlay">
         <div class="modal-box" style="text-align: left;">
-            <h2 style="color: #10b981; border:none; margin-bottom:5px; margin-top:0;">👤 User Details</h2>
+            <h2 style="color: #10b981; border:none; margin-bottom:5px; margin-top:0;">👤 User Details & Moderation</h2>
             <hr style="margin: 10px 0 20px 0;">
             <div id="userDetailContent" style="color: #cbd5e1; font-size: 14px; line-height: 1.8; margin-bottom: 25px;">
                 </div>
-            <button class="btn btn-red" onclick="document.getElementById('userDetailModal').classList.remove('show')">Close Details</button>
+            <button class="btn btn-gray" onclick="document.getElementById('userDetailModal').classList.remove('show')">Close Window</button>
         </div>
     </div>
 
     <div class="navbar">
         <button class="active" onclick="showSection('sec-dashboard')">📊 Dashboard</button>
         <button onclick="showSection('sec-users')">👥 All Users</button>
+        <button onclick="showSection('sec-utr')" style="color:#10b981;">✅ UTR Approvals</button>
         <button onclick="showSection('sec-content')">📝 Add Content</button>
         <button onclick="showSection('sec-marketing')">🚀 Banner & Notice</button>
         <button onclick="showSection('sec-sales')">💰 Sales & Codes</button>
@@ -101,7 +102,7 @@
 
         <div id="sec-users" class="section">
             <h2>👥 Registered Users Management</h2>
-            <p style="font-size:12px; color:#94a3b8;">Click on any user to view their A to Z complete details.</p>
+            <p style="font-size:12px; color:#94a3b8;">Click on any user to view details, ban them, or manually manage their unlocked series.</p>
             
             <div class="form-group">
                 <input type="text" id="userSearchInput" placeholder="🔍 Search by Name or Mobile Number..." onkeyup="filterUsers()">
@@ -114,6 +115,13 @@
                 <button class="btn btn-gray" id="btnPrevUser" onclick="prevUserPage()">❮ Previous 15</button>
                 <button class="btn btn-gray" id="btnNextUser" onclick="nextUserPage()">Next 15 ❯</button>
             </div>
+        </div>
+
+        <div id="sec-utr" class="section">
+            <h2>✅ Pending Payment Approvals</h2>
+            <p style="font-size:12px; color:#94a3b8;">Approve user UTR submissions to automatically unlock their Test Series.</p>
+            <button class="btn btn-purple" style="width:auto; margin-bottom: 20px;" onclick="loadPendingUTRs()">🔄 Refresh List</button>
+            <div id="utrListContainer" style="margin-top: 10px;"></div>
         </div>
 
         <div id="sec-content" class="section">
@@ -159,6 +167,17 @@
             <div class="form-group"><label>Coaching Name</label><input type="text" id="coachName"></div>
             <div class="form-group"><label>Banner Image Link (Optional)</label><input type="text" id="coachImg" placeholder="https://..."></div>
             <button class="btn" onclick="saveCoaching()">Add Coaching</button>
+
+            <hr>
+            <h2>🖼️ Set Exam Banner</h2>
+            <div class="form-group"><label>Select Coaching</label>
+                <select id="bannerCoaching" onchange="updateBannerExams()"><option value="">Loading...</option></select>
+            </div>
+            <div class="form-group"><label>Select Exam</label>
+                <select id="bannerExam"><option value="">Select Coaching First</option></select>
+            </div>
+            <div class="form-group"><label>Exam Banner Link (Optional)</label><input type="text" id="examBannerImg" placeholder="https://..."></div>
+            <button class="btn btn-purple" onclick="saveExamBanner()">Save Exam Banner</button>
 
             <hr>
             <h2>Add Free Notes (PDF)</h2>
@@ -272,7 +291,8 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { getFirestore, doc, setDoc, getDoc, getDocs, collection, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        // IMPORTED updateDoc, arrayUnion, arrayRemove, query, where FOR NEW FEATURES
+        import { getFirestore, doc, setDoc, getDoc, getDocs, collection, deleteDoc, updateDoc, arrayUnion, arrayRemove, query, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBeErP4iZHJYCTh4jPtxTvaSKaTQ8qBSDQ",
@@ -307,7 +327,8 @@
             event.target.classList.add('active');
             
             if(id === 'sec-dashboard') loadDashboardStats();
-            if(id === 'sec-users') loadAllUsersData(); // Load users when section opens
+            if(id === 'sec-users') loadAllUsersData();
+            if(id === 'sec-utr') loadPendingUTRs();
         }
 
         window.checkTopicTest = function() {
@@ -315,15 +336,67 @@
             document.getElementById('subjectBox').style.display = (cat === 'Topic Test') ? 'block' : 'none';
         }
 
-        // ================= USER MANAGEMENT LOGIC (NEW) =================
+        // ================= NEW UTR VERIFICATION & APPROVAL LOGIC =================
+        window.loadPendingUTRs = async function() {
+            showUI(true);
+            const container = document.getElementById('utrListContainer');
+            container.innerHTML = "";
+            try {
+                const q = query(collection(db, "Pending_Payments"), where("status", "==", "Pending"));
+                const snap = await getDocs(q);
+                if(snap.empty) { container.innerHTML = "<p style='color:#94a3b8; text-align:center;'>No pending UTR requests right now.</p>"; showUI(false); return; }
+                
+                snap.forEach(docSnap => {
+                    const d = docSnap.data();
+                    container.innerHTML += `
+                        <div class="list-item" style="flex-direction:column; align-items:flex-start; gap:10px; border-left:4px solid #10b981;">
+                            <div style="width:100%;">
+                                <p style="color:#60a5fa; font-size:18px;">💳 UTR: ${d.utr}</p>
+                                <p style="font-size:13px; color:#94a3b8;">User: <b style="color:#f8fafc;">${d.userName}</b> (${d.userNum})</p>
+                                <p style="font-size:13px; color:#94a3b8;">Exam: <b style="color:#f8fafc;">${d.examName}</b> | Amount: <b style="color:#10b981;">₹${d.amount}</b> | UPI Node: <b style="color:#fbbf24;">${d.upiUsed || 'Unknown'}</b></p>
+                            </div>
+                            <div style="display:flex; gap:10px; width:100%;">
+                                <button class="btn btn-green" style="padding:8px; font-size:13px;" onclick="approveUTR('${d.utr}', '${d.userNum}', '${d.examName}')">✅ Approve & Unlock</button>
+                                <button class="btn btn-red" style="padding:8px; font-size:13px;" onclick="rejectUTR('${d.utr}')">❌ Reject</button>
+                            </div>
+                        </div>
+                    `;
+                });
+                showUI(false);
+            } catch(e) { showUI(false); showCustomModal("Error", e.message); }
+        }
+
+        window.approveUTR = async function(utr, userNum, examName) {
+            if(!confirm(`Approve UTR ${utr} and unlock ${examName}?`)) return;
+            showUI(true);
+            try {
+                // Update UTR Status
+                await updateDoc(doc(db, "Pending_Payments", utr), { status: "Used" });
+                // Unlock Series for User
+                await updateDoc(doc(db, "Users", userNum), { unlockedSeries: arrayUnion(examName) });
+                
+                showUI(false); 
+                loadPendingUTRs(); 
+                showCustomModal("Success", "Payment Approved & Test Series Unlocked for the user!");
+            } catch(e) { showUI(false); showCustomModal("Error", e.message); }
+        }
+
+        window.rejectUTR = async function(utr) {
+            if(!confirm(`Are you sure you want to REJECT this UTR?`)) return;
+            showUI(true);
+            try {
+                await updateDoc(doc(db, "Pending_Payments", utr), { status: "Rejected" });
+                showUI(false); loadPendingUTRs(); showCustomModal("Success", "Payment Request Rejected.");
+            } catch(e) { showUI(false); showCustomModal("Error", e.message); }
+        }
+
+        // ================= USER MANAGEMENT LOGIC =================
         window.loadAllUsersData = async function() {
             showUI(true);
             try {
                 const snap = await getDocs(collection(db, "Users"));
                 window.allUsersData = [];
-                snap.forEach(doc => {
-                    window.allUsersData.push({ id: doc.id, ...doc.data() });
-                });
+                snap.forEach(doc => { window.allUsersData.push({ id: doc.id, ...doc.data() }); });
                 window.filteredUsers = [...window.allUsersData];
                 window.userCurrentPage = 1;
                 renderUsersList();
@@ -337,8 +410,7 @@
                 (u.name && u.name.toLowerCase().includes(query)) || 
                 (u.number && u.number.toString().includes(query))
             );
-            window.userCurrentPage = 1;
-            renderUsersList();
+            window.userCurrentPage = 1; renderUsersList();
         }
 
         window.renderUsersList = function() {
@@ -352,10 +424,11 @@
                 list.innerHTML = "<p style='text-align:center; color:#94a3b8;'>No users found.</p>";
             } else {
                 pageUsers.forEach(u => {
+                    let statusDot = (u.isBanned) ? "🔴" : "🟢";
                     list.innerHTML += `
                         <div class="list-item" style="cursor:pointer; border-left: 4px solid #3b82f6;" onclick="showUserDetails('${u.number}')">
                             <div>
-                                <p style="margin:0; color:#f8fafc;">${u.name}</p>
+                                <p style="margin:0; color:#f8fafc;">${u.name} ${statusDot}</p>
                                 <p style="margin:0; font-size:12px; color:#94a3b8;">📞 ${u.number}</p>
                             </div>
                             <div style="font-weight:bold; color:#3b82f6; font-size: 18px;">➔</div>
@@ -364,41 +437,136 @@
                 });
             }
 
-            // Update Buttons State
-            const btnPrev = document.getElementById('btnPrevUser');
-            const btnNext = document.getElementById('btnNextUser');
-            
-            if(window.userCurrentPage === 1) { btnPrev.style.opacity = "0.4"; btnPrev.style.pointerEvents = "none"; } 
-            else { btnPrev.style.opacity = "1"; btnPrev.style.pointerEvents = "auto"; }
-            
-            if(end >= window.filteredUsers.length) { btnNext.style.opacity = "0.4"; btnNext.style.pointerEvents = "none"; } 
-            else { btnNext.style.opacity = "1"; btnNext.style.pointerEvents = "auto"; }
+            const btnPrev = document.getElementById('btnPrevUser'); const btnNext = document.getElementById('btnNextUser');
+            if(window.userCurrentPage === 1) { btnPrev.style.opacity = "0.4"; btnPrev.style.pointerEvents = "none"; } else { btnPrev.style.opacity = "1"; btnPrev.style.pointerEvents = "auto"; }
+            if(end >= window.filteredUsers.length) { btnNext.style.opacity = "0.4"; btnNext.style.pointerEvents = "none"; } else { btnNext.style.opacity = "1"; btnNext.style.pointerEvents = "auto"; }
         }
 
         window.nextUserPage = function() { window.userCurrentPage++; renderUsersList(); }
         window.prevUserPage = function() { if(window.userCurrentPage > 1) { window.userCurrentPage--; renderUsersList(); } }
 
-        window.showUserDetails = function(userNumber) {
-            const user = window.allUsersData.find(u => u.number === userNumber);
+        window.refreshUserDetails = async function(userNum) {
+            try {
+                const docSnap = await getDoc(doc(db, "Users", userNum));
+                if(docSnap.exists()) {
+                    const uData = { id: docSnap.id, ...docSnap.data() };
+                    const index = window.allUsersData.findIndex(u => u.number === userNum);
+                    if(index !== -1) window.allUsersData[index] = uData;
+                    window.showUserDetails(userNum, uData);
+                    renderUsersList(); // Update dots in main list
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        // ================= ADVANCED MODERATION UI =================
+        window.showUserDetails = function(userNumber, passedUser = null) {
+            const user = passedUser || window.allUsersData.find(u => u.number === userNumber);
             if(!user) return;
 
-            let seriesHtml = "<span style='color:#ef4444;'>None</span>";
-            if(user.unlockedSeries && user.unlockedSeries.length > 0) {
-                seriesHtml = user.unlockedSeries.map(s => `<span style="background:#10b981; color:white; padding:3px 8px; border-radius:6px; font-size:12px; display:inline-block; margin:2px;">${s}</span>`).join(" ");
+            // Check Ban Status
+            let banStatus = "<span style='color:#10b981;'>🟢 Active</span>";
+            if (user.isBanned) {
+                if (user.banUntil && new Date(user.banUntil) > new Date()) {
+                    banStatus = `<span style='color:#ef4444;'>🔴 Banned until ${new Date(user.banUntil).toLocaleString()}</span>`;
+                } else if (!user.banUntil) {
+                    banStatus = "<span style='color:#ef4444;'>🔴 Permanently Banned</span>";
+                } else {
+                    banStatus = "<span style='color:#10b981;'>🟢 Active (Previous Ban Expired)</span>";
+                }
             }
+
+            // Series List with Unlock Buttons
+            let seriesHtml = "<p style='color:#94a3b8; font-size:12px; margin:0;'>No active series found.</p>";
+            if(user.unlockedSeries && user.unlockedSeries.length > 0) {
+                seriesHtml = user.unlockedSeries.map(s => `
+                    <div style="display:flex; justify-content:space-between; align-items:center; background:#0f172a; padding:8px 12px; margin:5px 0; border-radius:8px; border:1px solid #334155;">
+                        <span style="font-weight:bold; color:#60a5fa;">${s}</span> 
+                        <button style="background:#ef4444; color:white; border:none; border-radius:6px; padding:5px 10px; cursor:pointer; font-size:11px; font-weight:bold;" onclick="removeUserSeries('${user.number}', '${s}')">Lock</button>
+                    </div>`).join("");
+            }
+
+            // Populate all available exams for manual unlock dropdown
+            let unlockOptions = Object.keys(window.allExamsMap).map(c => 
+                `<optgroup label="${c}">${Array.from(window.allExamsMap[c]).map(e => `<option value="${e}">${e}</option>`).join('')}</optgroup>`
+            ).join('');
 
             const details = `
                 <div style="margin-bottom:8px;"><b>👤 Name:</b> <span style="color:#f8fafc;">${user.name || 'N/A'}</span></div>
                 <div style="margin-bottom:8px;"><b>📞 Mobile:</b> <span style="color:#f8fafc;">${user.number || 'N/A'}</span></div>
-                <div style="margin-bottom:8px;"><b>🎂 DOB:</b> <span style="color:#f8fafc;">${user.dob || 'N/A'}</span></div>
                 <div style="margin-bottom:8px;"><b>🔑 Password:</b> <span style="color:#f59e0b;">${user.password || 'N/A'}</span></div>
-                <div style="margin-bottom:8px;"><b>🔓 Unlocked Test Series:</b><br> ${seriesHtml}</div>
+                
                 <hr style="border-color:#334155; margin:15px 0;">
-                <div style="margin-bottom:8px; font-size:11px; color:#64748b; word-break: break-all;"><b>Device Token:</b><br>${user.deviceToken || 'N/A'}</div>
+                <h3 style="margin-top:0; color:#f59e0b; font-size:15px;">🛡️ Moderation System</h3>
+                <p style="margin:5px 0 10px 0; font-size:13px;"><b>Account Status:</b> ${banStatus}</p>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <button class="btn btn-red" style="padding:8px; font-size:11px; width:auto;" onclick="banUser('${user.number}', 2)">Ban 2H</button>
+                    <button class="btn btn-red" style="padding:8px; font-size:11px; width:auto;" onclick="banUser('${user.number}', 5)">Ban 5H</button>
+                    <button class="btn btn-red" style="padding:8px; font-size:11px; width:auto;" onclick="banUser('${user.number}', 8)">Ban 8H</button>
+                    <button class="btn btn-red" style="padding:8px; font-size:11px; width:auto; background:#7f1d1d;" onclick="banUser('${user.number}', 'perm')">Perm Ban</button>
+                    <button class="btn btn-green" style="padding:8px; font-size:11px; width:auto;" onclick="unbanUser('${user.number}')">Unban Account</button>
+                </div>
+
+                <hr style="border-color:#334155; margin:15px 0;">
+                <h3 style="margin-top:0; color:#3b82f6; font-size:15px;">🔓 User Unlocked Series</h3>
+                <div style="margin-bottom:15px;">${seriesHtml}</div>
+                
+                <p style="margin:0 0 5px 0; font-size:12px; color:#10b981; font-weight:bold;">Manual Add/Unlock Series:</p>
+                <div style="display:flex; gap:10px;">
+                    <select id="manualUnlockSeriesSelect" style="padding:8px; width:70%; font-size:12px; background:#0f172a;">
+                        <option value="">-- Select Exam Series --</option>
+                        ${unlockOptions}
+                    </select>
+                    <button class="btn btn-green" style="padding:8px; font-size:12px; width:30%;" onclick="manualUnlockUserSeries('${user.number}')">Unlock</button>
+                </div>
             `;
             
             document.getElementById('userDetailContent').innerHTML = details;
             document.getElementById('userDetailModal').classList.add('show');
+        }
+
+        window.banUser = async function(userNum, hours) {
+            let banUntil = null;
+            if(hours !== 'perm') {
+                const date = new Date();
+                date.setHours(date.getHours() + parseInt(hours));
+                banUntil = date.toISOString();
+            }
+            showUI(true);
+            try {
+                await updateDoc(doc(db, "Users", userNum), { isBanned: true, banUntil: banUntil });
+                await refreshUserDetails(userNum);
+                showUI(false);
+            } catch(e) { showUI(false); showCustomModal("Error", e.message); }
+        }
+
+        window.unbanUser = async function(userNum) {
+            showUI(true);
+            try {
+                await updateDoc(doc(db, "Users", userNum), { isBanned: false, banUntil: null });
+                await refreshUserDetails(userNum);
+                showUI(false);
+            } catch(e) { showUI(false); showCustomModal("Error", e.message); }
+        }
+
+        window.removeUserSeries = async function(userNum, seriesName) {
+            if(!confirm(`Lock the series '${seriesName}' for this user?`)) return;
+            showUI(true);
+            try {
+                await updateDoc(doc(db, "Users", userNum), { unlockedSeries: arrayRemove(seriesName) });
+                await refreshUserDetails(userNum);
+                showUI(false);
+            } catch(e) { showUI(false); showCustomModal("Error", e.message); }
+        }
+
+        window.manualUnlockUserSeries = async function(userNum) {
+            const seriesName = document.getElementById('manualUnlockSeriesSelect').value;
+            if(!seriesName) return showCustomModal("Wait", "Select a series from the dropdown first.");
+            showUI(true);
+            try {
+                await updateDoc(doc(db, "Users", userNum), { unlockedSeries: arrayUnion(seriesName) });
+                await refreshUserDetails(userNum);
+                showUI(false);
+            } catch(e) { showUI(false); showCustomModal("Error", e.message); }
         }
 
         // ================= DYNAMIC DROPDOWNS FETCH =================
@@ -426,6 +594,7 @@
             const cOptions = `<option value="">-- Select Coaching --</option>` + window.allCoachingsList.map(c => `<option value="${c}">${c}</option>`).join('');
             document.getElementById('testCoaching').innerHTML = cOptions;
             document.getElementById('salesCoaching').innerHTML = cOptions;
+            document.getElementById('bannerCoaching').innerHTML = cOptions; // NEW BANNER COACHING
         }
 
         window.updateTestExams = function() {
@@ -452,6 +621,15 @@
             eSelect.innerHTML = eOptions;
         }
 
+        window.updateBannerExams = function() {
+            const c = document.getElementById('bannerCoaching').value;
+            const eSelect = document.getElementById('bannerExam');
+            if(!c) { eSelect.innerHTML = `<option value="">-- Select Coaching First --</option>`; return; }
+            let eOptions = `<option value="">-- Select Exam --</option>`;
+            if(window.allExamsMap[c]) Array.from(window.allExamsMap[c]).forEach(e => { eOptions += `<option value="${e}">${e}</option>`; });
+            eSelect.innerHTML = eOptions;
+        }
+
         // ================= DASHBOARD STATS =================
         window.loadDashboardStats = async function() {
             showUI(true);
@@ -459,6 +637,13 @@
                 let userCount = (await getDocs(collection(db, "Users"))).size;
                 let usedCodesCount = 0; let unusedCodesCount = 0; let totalRev = 0;
                 
+                // Also add Revenue from Pending_Payments that are 'Used'
+                const paySnap = await getDocs(query(collection(db, "Pending_Payments"), where("status", "==", "Used")));
+                paySnap.forEach(d => {
+                    const data = d.data();
+                    if(data.amount) totalRev += Number(data.amount);
+                });
+
                 const priceSnap = await getDocs(collection(db, "Pricing"));
                 let priceMap = {};
                 priceSnap.forEach(d => priceMap[d.id] = parseInt(d.data().basePrice) || 0);
@@ -491,11 +676,8 @@
             if(exam === 'NEW') exam = document.getElementById('newTestExam').value;
             const name = document.getElementById('testName').value;
             const cat = document.getElementById('testCategory').value;
-            
-            // UPGRADE 1: FETCHING TCS AND EDUQUITY LINKS INSTEAD OF DIRECT LINK
             const tcsLink = document.getElementById('testLinkTcs').value;
             const eduLink = document.getElementById('testLinkEdu').value;
-            
             const pdf = document.getElementById('testPdf').value;
             const subject = document.getElementById('testSubject').value;
 
@@ -504,7 +686,6 @@
             
             showUI(true);
             try {
-                // SAVING NEW STRUCTURE
                 await setDoc(doc(db, "Tests", name), { coachingName: coaching, examName: exam, testName: name, category: cat, subjectName: subject, tcsLink: tcsLink, eduquityLink: eduLink, pdfLink: pdf }, {merge:true});
                 fetchDropdownData();
                 showUI(false); showCustomModal("Success", "Test Saved/Updated successfully.");
@@ -517,6 +698,18 @@
             if(!name) return;
             showUI(true);
             try { await setDoc(doc(db, "Coachings", name), { name: name, banner: img }); fetchDropdownData(); showUI(false); showCustomModal("Success", "Coaching Added!"); document.getElementById('coachName').value=""; document.getElementById('coachImg').value=""; } catch(e) { showUI(false); }
+        }
+
+        window.saveExamBanner = async function() {
+            const exam = document.getElementById('bannerExam').value;
+            const img = document.getElementById('examBannerImg').value;
+            if(!exam || !img) return showCustomModal("Wait", "Select Exam and enter Banner Link!");
+            showUI(true);
+            try {
+                await setDoc(doc(db, "Exams", exam), { examName: exam, banner: img }, {merge:true});
+                showUI(false); showCustomModal("Success", `Banner link saved for ${exam}`);
+                document.getElementById('examBannerImg').value = "";
+            } catch(e) { showUI(false); showCustomModal("Error", e.message); }
         }
 
         window.saveNote = async function() {
