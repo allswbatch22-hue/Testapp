@@ -193,7 +193,6 @@
                 </select>
             </div>
 
-            <!-- Datalist for Subject Auto-Suggestion -->
             <datalist id="existingSubjectsList"></datalist>
             <div class="form-group" id="subjectBox" style="display:none;"><label style="color:#10b981;">Subject Name (For Topic Test)</label><input type="text" id="testSubject" list="existingSubjectsList" placeholder="Click to select or type new e.g. Mathematics"></div>
 
@@ -341,11 +340,12 @@
             <button class="btn" onclick="savePaymentInfo()">Save Instructions</button>
         </div>
 
-        <!-- Team Management Section -->
+        <!-- NEW: TEAM MANAGEMENT SECTION (NAME & PASSWORD) -->
         <div id="sec-team" class="section">
             <h2>🛡️ Team Member Management</h2>
-            <p style="font-size:12px; color:#94a3b8;">Add team member emails here to allow them to log into the Team Panel. You can block/activate them instantly.</p>
-            <div class="form-group"><label>Team Member Email</label><input type="email" id="teamMemberEmail" placeholder="team@example.com"></div>
+            <p style="font-size:12px; color:#94a3b8;">Add team members using Name and Password. They will use these to log into the Team Panel.</p>
+            <div class="form-group"><label>Team Member Name</label><input type="text" id="teamMemberName" placeholder="e.g. Rahul"></div>
+            <div class="form-group"><label>Assign Password</label><input type="text" id="teamMemberPass" placeholder="e.g. rahul@123"></div>
             <button class="btn btn-purple" onclick="addTeamMember()">Add Team Member</button>
             <hr>
             <h3>👥 All Team Members</h3>
@@ -364,6 +364,7 @@
                     <option value="Notes">Free Notes (PDF)</option>
                     <option value="Coupons">Discount Coupons</option>
                     <option value="ActivationCodes">Activation Codes</option>
+                    <option value="TeamMembers">Team Members</option>
                 </select>
             </div>
             <div id="deleteListContainer" style="margin-top: 20px;"></div>
@@ -718,12 +719,16 @@
 
         // ================= TEAM MANAGEMENT SYSTEM =================
         window.addTeamMember = async function() {
-            const email = document.getElementById('teamMemberEmail').value.trim();
-            if(!email) return showCustomModal("Wait", "Please enter a valid email address!");
+            const name = document.getElementById('teamMemberName').value.trim();
+            const pass = document.getElementById('teamMemberPass').value.trim();
+            
+            if(!name || !pass) return showCustomModal("Wait", "Please enter both Name and Password!");
+            
             showUI(true);
             try {
-                await trackedSetDoc(doc(db, "TeamMembers", email.replace(/\./g, '_')), { email: email, status: "active" });
-                document.getElementById('teamMemberEmail').value = "";
+                await trackedSetDoc(doc(db, "TeamMembers", name), { name: name, password: pass, status: "active" });
+                document.getElementById('teamMemberName').value = "";
+                document.getElementById('teamMemberPass').value = "";
                 showUI(false); showCustomModal("Success", "Team member added successfully!");
                 loadTeamList();
             } catch(e) { showUI(false); showCustomModal("Error", e.message); }
@@ -745,7 +750,10 @@
                     
                     container.innerHTML += `
                         <div class="list-item" style="border-left: 4px solid ${isBlocked ? '#ef4444' : '#10b981'};">
-                            <p>${t.email} <span style="font-size:11px; color:${isBlocked ? '#ef4444' : '#10b981'};">(${t.status.toUpperCase()})</span></p>
+                            <div>
+                                <p style="margin:0;">${docSnap.id} <span style="font-size:11px; color:${isBlocked ? '#ef4444' : '#10b981'};">(${t.status.toUpperCase()})</span></p>
+                                <p style="margin:0; font-size:11px; color:#94a3b8;">Password: ${t.password}</p>
+                            </div>
                             <div>${actionBtn}</div>
                         </div>
                     `;
@@ -761,7 +769,7 @@
             } catch(e) { showUI(false); showCustomModal("Error", e.message); }
         }
 
-        // ================= DYNAMIC DROPDOWNS FETCH =================
+        // ================= DYNAMIC DROPDOWNS FETCH (SMART DATALIST ADDED) =================
         window.fetchDropdownData = async function() {
             try {
                 const cSnap = await getDocs(collection(db, "Coachings"));
@@ -1138,6 +1146,7 @@
                     if(collectionName === "Notes") displayName = `[PDF] ${doc.data().title || docId}`;
                     if(collectionName === "Coupons") displayName = `[Coupon] ${doc.data().code || docId} (${doc.data().examName})`;
                     if(collectionName === "ActivationCodes") displayName = `[Code] ${doc.data().code || docId} (${doc.data().examName})`;
+                    if(collectionName === "TeamMembers") displayName = `[Team] ${doc.data().name || docId}`;
 
                     container.innerHTML += `
                         <div class="list-item" id="item-${docId}">
