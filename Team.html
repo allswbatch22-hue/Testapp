@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team Member Panel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body { background: #0f172a; color: #f8fafc; font-family: 'Poppins', sans-serif; padding: 20px; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; margin: 0; }
+        .card { background: #1e293b; padding: 25px; border-radius: 16px; margin-bottom: 20px; border: 1px solid #334155; width: 100%; max-width: 500px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+        input, textarea { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #fff; font-family: 'Poppins', sans-serif; outline: none; }
+        input:focus, textarea:focus { border-color: #10b981; }
+        .btn { padding: 12px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; font-family: 'Poppins', sans-serif; font-size: 15px; transition: 0.3s; }
+        .btn:active { transform: scale(0.98); }
+        .btn-green { background: #10b981; color: white; }
+        .btn-green:hover { background: #059669; }
+        .btn-purple { background: #8b5cf6; color: white; }
+        .btn-purple:hover { background: #7c3aed; }
+        .list-item { background: #0f172a; padding: 15px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #334155; display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; gap: 10px; }
+        .list-item p { margin: 0; font-size: 14px; width: 100%; }
+        h1, h2, h3 { margin-top: 0; color: #60a5fa; }
+        hr { border: 0; border-top: 1px solid #334155; margin: 25px 0; }
+        .spinner { border: 3px solid rgba(255,255,255,0.2); border-top: 3px solid #10b981; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; display: inline-block; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <!-- Login Section -->
+    <div id="loginSection" class="card">
+        <h2>🛡️ Team Member Login</h2>
+        <p style="font-size: 12px; color: #94a3b8;">Login using the Name and Password provided by the Super Admin.</p>
+        <input type="text" id="teamName" placeholder="Enter Your Name">
+        <input type="password" id="teamPass" placeholder="Enter Password">
+        <button class="btn btn-green" id="loginBtn" onclick="teamLogin()">Login Securely</button>
+    </div>
+
+    <!-- Dashboard Section -->
+    <div id="teamDashboard" class="card" style="display:none;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h1 style="margin: 0; font-size: 20px;">Team Dashboard</h1>
+            <button onclick="logout()" style="background:transparent; color:#ef4444; border:none; cursor:pointer; font-weight: bold; font-size:13px;">Logout 🚪</button>
+        </div>
+        <p style="font-size: 12px; color: #10b981; margin-top: 5px;">Logged in as: <b id="displayName"></b></p>
+        
+        <hr>
+
+        <h3>🎯 Update Daily Target</h3>
+        <textarea id="targetMsg" rows="3" placeholder="Enter new daily target for users..."></textarea>
+        <button class="btn btn-green" onclick="updateTarget()">Update Target</button>
+
+        <hr>
+
+        <h3 style="color: #10b981;">✅ Approve Payments (UPI-1 Only)</h3>
+        <p style="font-size: 12px; color: #94a3b8;">You are authorized to approve payments made via UPI ID 1 only.</p>
+        <button class="btn btn-purple" style="font-size: 12px; padding: 8px; margin-bottom: 15px;" onclick="loadTeamData()">🔄 Refresh Requests</button>
+        <div id="utrList">
+            <p style="font-size: 13px; color: #94a3b8; text-align: center;">Loading requests...</p>
+        </div>
+
+        <hr>
+
+        <h3>📢 Update Notice Board</h3>
+        <input type="text" id="notTitle" placeholder="Notice Title (e.g. Server Maintenance)">
+        <textarea id="notDesc" rows="3" placeholder="Notice Description..."></textarea>
+        <button class="btn btn-purple" onclick="updateNotice()">Update Notice</button>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFirestore, doc, getDoc, setDoc, getDocs, updateDoc, collection, query, where, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+        // Your Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBeErP4iZHJYCTh4jPtxTvaSKaTQ8qBSDQ",
+            authDomain: "premium-test-series.firebaseapp.com",
+            projectId: "premium-test-series",
+            storageBucket: "premium-test-series.firebasestorage.app",
+            messagingSenderId: "602821369562",
+            appId: "1:602821369562:web:dfc78fd5ae99e4725acfe3"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Auto-Login Check on Page Load
+        window.onload = () => {
+            const savedName = localStorage.getItem("teamName");
+            if(savedName) {
+                document.getElementById('loginSection').style.display = 'none';
+                document.getElementById('teamDashboard').style.display = 'block';
+                document.getElementById('displayName').innerText = savedName;
+                loadTeamData();
+            }
+        }
+
+        // Login Logic
+        window.teamLogin = async function() {
+            const name = document.getElementById('teamName').value.trim();
+            const pass = document.getElementById('teamPass').value;
+            const loginBtn = document.getElementById('loginBtn');
+            
+            if(!name || !pass) return alert("Please enter both Name and Password!");
+
+            loginBtn.innerHTML = "<div class='spinner'></div>";
+            loginBtn.disabled = true;
+
+            try {
+                // Name acts as Document ID in TeamMembers collection
+                const snap = await getDoc(doc(db, "TeamMembers", name));
+                
+                if(snap.exists() && snap.data().password === pass) {
+                    if(snap.data().status === 'active') {
+                        localStorage.setItem("teamName", name);
+                        location.reload(); // Reload to trigger Auto-Login
+                    } else {
+                        alert("Your account has been blocked by the Super Admin.");
+                    }
+                } else { 
+                    alert("Login Failed! Incorrect Name or Password."); 
+                }
+            } catch(e) {
+                alert("Error connecting to server. Please try again.");
+            }
+
+            loginBtn.innerHTML = "Login Securely";
+            loginBtn.disabled = false;
+        }
+
+        // Logout Logic
+        window.logout = () => { 
+            localStorage.removeItem("teamName"); 
+            location.reload(); 
+        }
+
+        // Load UTRs & Existing Notices
+        window.loadTeamData = async function() {
+            const list = document.getElementById('utrList');
+            list.innerHTML = "<div style='text-align:center;'><div class='spinner'></div></div>";
+            
+            try {
+                // Fetch only Pending Payments that used UPI_1
+                const q = query(collection(db, "Pending_Payments"), where("status", "==", "Pending"), where("upiUsed", "==", "UPI_1"));
+                const snap = await getDocs(q);
+                
+                if(snap.empty) {
+                    list.innerHTML = "<p style='font-size: 13px; color: #94a3b8; text-align: center;'>No pending payments found for UPI-1 right now.</p>";
+                } else {
+                    list.innerHTML = "";
+                    snap.forEach(d => {
+                        const data = d.data();
+                        list.innerHTML += `
+                            <div class="list-item" style="border-left: 4px solid #10b981;">
+                                <p style="color: #60a5fa; font-weight: bold; font-size: 15px;">UTR: ${data.utr}</p>
+                                <p style="color: #cbd5e1; font-size: 12px;">User: <b>${data.userName}</b> (${data.userNum})</p>
+                                <p style="color: #cbd5e1; font-size: 12px;">Exam: <b>${data.examName}</b> | Amount: <span style="color:#10b981; font-weight:bold;">₹${data.amount}</span></p>
+                                <button class="btn btn-green" style="margin-top: 5px;" onclick="approve('${d.id}', '${data.userNum}', '${data.examName}')">✅ Approve & Unlock</button>
+                            </div>
+                        `;
+                    });
+                }
+
+                // Prefill existing Target and Notice
+                const targetSnap = await getDoc(doc(db, "Notices", "Daily_Target"));
+                if(targetSnap.exists()) document.getElementById('targetMsg').value = targetSnap.data().description || "";
+
+                const noticeSnap = await getDoc(doc(db, "Notices", "Latest_Notice"));
+                if(noticeSnap.exists()) {
+                    document.getElementById('notTitle').value = noticeSnap.data().title || "";
+                    document.getElementById('notDesc').value = noticeSnap.data().description || "";
+                }
+
+            } catch(e) {
+                list.innerHTML = "<p style='color:#ef4444; font-size: 13px;'>Error loading data.</p>";
+            }
+        }
+        
+        // Approve UTR Logic
+        window.approve = async function(utrId, userNum, examName) {
+            if(!confirm(`Approve this UTR and unlock ${examName} for the user?`)) return;
+            
+            try {
+                // Update payment status
+                await updateDoc(doc(db, "Pending_Payments", utrId), { status: "Used" });
+                // Unlock series for user
+                await updateDoc(doc(db, "Users", userNum), { unlockedSeries: arrayUnion(examName) });
+                
+                alert("✅ Payment Approved & Series Unlocked Successfully!");
+                loadTeamData(); // Refresh the list
+            } catch(e) {
+                alert("Error: " + e.message);
+            }
+        }
+
+        // Update Daily Target
+        window.updateTarget = async function() {
+            const msg = document.getElementById('targetMsg').value;
+            try {
+                await setDoc(doc(db, "Notices", "Daily_Target"), { description: msg });
+                alert("✅ Daily Target Updated Successfully!");
+            } catch(e) { alert("Error updating target."); }
+        }
+
+        // Update Notice Board
+        window.updateNotice = async function() {
+            const title = document.getElementById('notTitle').value;
+            const desc = document.getElementById('notDesc').value;
+            try {
+                await setDoc(doc(db, "Notices", "Latest_Notice"), { title: title, description: desc });
+                alert("✅ Notice Board Updated Successfully!");
+            } catch(e) { alert("Error updating notice."); }
+        }
+    </script>
+</body>
+</html>
