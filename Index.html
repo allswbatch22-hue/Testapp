@@ -111,6 +111,7 @@
         </div>
     </div>
 
+    <!-- Login/Register/Forgot Screens -->
     <div id="loginScreen" class="screen">
         <div style="background: var(--bg-card); padding: 30px 20px; border-radius: 24px; margin: auto 0; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border: 1px solid var(--border-color);">
             <img id="appLogoImg" src="" style="display:none; max-width: 100px; height: auto; margin: 0 auto 15px auto; border-radius: 12px;">
@@ -151,6 +152,7 @@
         </div>
     </div>
 
+    <!-- Home Screen -->
     <div id="homeScreen" class="screen" style="padding: 0;">
         <div class="header">
             <div>
@@ -190,11 +192,13 @@
         </div>
     </div>
 
+    <!-- Exam Screen -->
     <div id="examScreen" class="screen" style="padding:0;">
         <div class="header"><button class="icon-btn" onclick="switchScreen('homeScreen')">❮</button><span id="examTitle">Exams</span><div style="width:35px;"></div></div>
-        <div style="padding: 20px; display: flex; flex-direction: column; gap: 15px;" id="examList"></div>
+        <div style="padding: 20px; display: flex; flex-direction: column; gap: 18px;" id="examList"></div>
     </div>
 
+    <!-- Category Screen -->
     <div id="categoryScreen" class="screen" style="padding:0;">
         <div class="header"><button class="icon-btn" onclick="switchScreen('examScreen')">❮</button><span id="catTitle">Categories</span><div style="width:35px;"></div></div>
         <div style="padding: 20px;">
@@ -205,6 +209,7 @@
                 <div class="cat-box" style="border-bottom: 5px solid #0ea5e9;" onclick="loadSubjects()"><h2>📘</h2><h3>Topic Tests</h3></div>
                 <div class="cat-box" style="border-bottom: 5px solid #8b5cf6;" onclick="loadNotes()" style="grid-column: span 2;"><h2>📚</h2><h3>Free Notes</h3></div>
             </div>
+            <!-- Dynamic Extra Cards Container -->
             <div id="dynamicCardsContainer" class="category-grid" style="margin-top: 15px;"></div>
         </div>
     </div>
@@ -219,6 +224,7 @@
         <div style="padding: 20px;" id="dataContainer"></div>
     </div>
 
+    <!-- Unlock / Payment Screen -->
     <div id="unlockScreen" class="screen" style="padding:0;">
         <div class="header" style="background: linear-gradient(135deg, #ef4444, #f97316);"><button class="icon-btn" onclick="switchScreen('dataListScreen')">❮</button><span>Unlock Series</span><div style="width:35px;"></div></div>
         <div style="padding: 20px;">
@@ -490,7 +496,6 @@
             } catch(e) { showUI(false); }
         }
 
-        // ================= FULL RECTANGLE BANNERS UI =================
         window.goToExams = async function(coaching) {
             currentCoaching = coaching; document.getElementById('examTitle').innerText = coaching; switchScreen('examScreen');
             const list = document.getElementById('examList'); 
@@ -508,16 +513,15 @@
 
                 list.innerHTML = uniqueExams.size === 0 ? "<p style='text-align:center;'>Exams uploading soon...</p>" : "";
                 
-                // PERFECT RECTANGLE LAYOUT (FULL WIDTH 16:9)
                 uniqueExams.forEach(exam => {
-                    let examBanner = bannerMap[exam] || "https://placehold.co/600x340/4318FF/FFFFFF?text=" + encodeURIComponent(exam);
+                    let examBanner = bannerMap[exam] || "https://placehold.co/800x300/1e1b4b/FFFFFF?text=" + encodeURIComponent(exam);
                     
                     list.innerHTML += `
-                        <div class="card" style="flex-direction: column; padding: 0; overflow: hidden; border-radius: 18px; margin-bottom: 0;" onclick="goToCategory('${exam}')">
-                            <img src="${examBanner}" style="width: 100%; aspect-ratio: 16/9; object-fit: cover; background:#4318FF;">
-                            <div style="padding: 15px; display: flex; justify-content: space-between; align-items: center; width: 100%; background: var(--bg-card);">
-                                <h3 style="margin: 0; font-size: 16px; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 75%;">${exam}</h3>
-                                <span style="font-size: 13px; font-weight: bold; color: #4318FF; background: rgba(67, 24, 255, 0.1); padding: 5px 12px; border-radius: 8px;">View ➔</span>
+                        <div style="position: relative; width: 100%; height: 130px; border-radius: 16px; overflow: hidden; cursor: pointer; box-shadow: 0 6px 15px rgba(0,0,0,0.1); border: 1px solid var(--border-color);" onclick="goToCategory('${exam}')">
+                            <img src="${examBanner}" style="width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; z-index: 1;">
+                            <div style="position: absolute; bottom: 0; left: 0; width: 100%; padding: 30px 15px 12px 15px; background: linear-gradient(to bottom, transparent, rgba(0,0,0,0.85)); z-index: 2; display: flex; justify-content: space-between; align-items: center;">
+                                <h3 style="margin: 0; font-size: 16px; color: #ffffff; font-weight: 700; text-shadow: 0 2px 4px rgba(0,0,0,0.8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 75%;">${exam}</h3>
+                                <span style="font-size: 12px; font-weight: 800; color: #2b3674; background: linear-gradient(135deg, #fbbf24, #f59e0b); padding: 5px 12px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">View ➔</span>
                             </div>
                         </div>`;
                 });
@@ -638,8 +642,25 @@
             document.getElementById('couponInput').value = "";
             
             currentFinalPrice = baseSeriesPrice;
+            let discountVal = 0;
+
+            const savedCouponStr = localStorage.getItem('savedActiveCoupon');
+            if(savedCouponStr) {
+                const savedCoupon = JSON.parse(savedCouponStr);
+                const now = Date.now();
+                
+                if((now - savedCoupon.timestamp < 300000) && (savedCoupon.exam === currentExam)) {
+                    discountVal = savedCoupon.discountVal;
+                    currentFinalPrice = baseSeriesPrice - discountVal;
+                    if(currentFinalPrice < 0) currentFinalPrice = 0;
+                    document.getElementById('couponInput').value = savedCoupon.code;
+                } else {
+                    localStorage.removeItem('savedActiveCoupon');
+                }
+            }
+
             document.getElementById('basePrice').innerText = `₹${baseSeriesPrice}`;
-            document.getElementById('discountAmount').innerText = `- ₹0`;
+            document.getElementById('discountAmount').innerText = `- ₹${discountVal}`;
             document.getElementById('finalPrice').innerText = `₹${currentFinalPrice}`;
             
             document.getElementById('paymentInstructionsText').innerText = window.paymentInst;
@@ -655,13 +676,23 @@
                 showUI(false);
                 if(snap.exists() && snap.data().status === "Active") {
                     if(snap.data().examName && snap.data().examName !== currentExam) { return showCustomModal("Invalid", "❌ This coupon is not valid for this Test Series."); }
+                    
                     const discountStr = snap.data().discount; 
                     let discountVal = discountStr.includes('%') ? (baseSeriesPrice * parseInt(discountStr)) / 100 : parseInt(discountStr);
                     currentFinalPrice = baseSeriesPrice - discountVal;
                     if(currentFinalPrice < 0) currentFinalPrice = 0;
+                    
                     document.getElementById('discountAmount').innerText = `- ₹${discountVal}`;
                     document.getElementById('finalPrice').innerText = `₹${currentFinalPrice}`;
-                    showCustomModal("Coupon Applied", "✅ Discount added successfully!");
+                    
+                    localStorage.setItem('savedActiveCoupon', JSON.stringify({
+                        code: code,
+                        discountVal: discountVal,
+                        exam: currentExam,
+                        timestamp: Date.now()
+                    }));
+
+                    showCustomModal("Coupon Applied", "✅ Discount added successfully! It will remain active for 5 minutes.");
                 } else { showCustomModal("Invalid", "❌ Coupon code is invalid or expired."); }
             } catch(e) { showUI(false); }
         }
@@ -743,6 +774,8 @@
                     status: "Pending",
                     timestamp: new Date().toISOString()
                 });
+
+                localStorage.removeItem('savedActiveCoupon');
 
                 showUI(false);
                 showCustomModal("Success", "✅ Request Submitted! Admin will verify and unlock your series shortly.");
