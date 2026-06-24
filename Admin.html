@@ -29,13 +29,14 @@
         .stat-card h3 { margin: 0; font-size: 35px; color: #fff; text-shadow: 0 4px 10px rgba(0,0,0,0.3); }
         .stat-card p { margin: 5px 0 0 0; color: #a5b4fc; font-weight: 600; font-size: 14px; text-transform: uppercase; }
 
-        .form-group { margin-bottom: 20px; }
+        .form-group { margin-bottom: 20px; position: relative; }
         label { display: block; margin-bottom: 8px; color: #cbd5e1; font-size: 13px; font-weight: 600; }
         input, select, textarea { width: 100%; padding: 14px; background: #0f172a; border: 1px solid #334155; border-radius: 12px; color: white; font-size: 14px; outline: none; }
         input:focus, select:focus, textarea:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.2); }
         
         .btn { background: #3b82f6; color: white; border: none; padding: 14px 20px; border-radius: 12px; font-weight: 700; cursor: pointer; width: 100%; font-size: 15px; }
         .btn-green { background: #10b981; } .btn-red { background: #ef4444; } .btn-purple { background: #8b5cf6; } .btn-gray { background: #64748b; }
+        .btn-sm { padding: 6px 12px; font-size: 11px; border-radius: 8px; font-weight: 600; cursor: pointer; border: none; color: white; }
 
         hr { border: 1px solid #334155; margin: 30px 0; }
 
@@ -67,6 +68,7 @@
         </div>
     </div>
 
+    <!-- User Moderation Details -->
     <div id="userDetailModal" class="modal-overlay">
         <div class="modal-box" style="text-align: left;">
             <h2 style="color: #10b981; border:none; margin-bottom:5px; margin-top:0;">👤 User Details & Moderation</h2>
@@ -97,6 +99,16 @@
                 <div class="stat-card" style="border-color:#10b981;"><h3 id="statRevenue" style="color:#34d399;">₹ 0</h3><p>Total Revenue</p></div>
                 <div class="stat-card" style="border-color:#f59e0b;"><h3 id="statCodes" style="color:#fbbf24;">0</h3><p>Unused Codes</p></div>
             </div>
+
+            <!-- NEW: REVENUE MANUAL DEDUCTION FEATURE -->
+            <hr>
+            <h3 style="color:#ef4444; margin-top:0;">📉 Adjust Total Revenue (Manual Minus)</h3>
+            <p style="font-size:12px; color:#94a3b8;">Enter amount to manually deduct from the Total Revenue shown above (e.g. for expenses or refunds).</p>
+            <div style="display:flex; gap:10px;">
+                <input type="number" id="deductAmount" placeholder="Amount to minus (₹)" style="margin-bottom:0; flex-grow:1;">
+                <button class="btn btn-red" style="width:auto; padding: 0 25px;" onclick="deductRevenue()">Minus (-)</button>
+            </div>
+            <p style="font-size:11px; color:#64748b; margin-top:10px;">Total Deducted Till Now: <b id="totalDeductedDisplay" style="color:#ef4444;">₹ 0</b></p>
         </div>
 
         <div id="sec-users" class="section">
@@ -119,8 +131,25 @@
 
         <div id="sec-content" class="section">
             <h2>📝 Add / Update Test</h2>
-            <div class="form-group"><label>Select Coaching</label><select id="testCoaching" onchange="updateTestExams()"><option value="">Loading...</option></select></div>
-            <div class="form-group"><label>Select Exam (Test Series)</label><select id="testExam" onchange="checkNewExam()"><option value="">Select Coaching First</option></select><input type="text" id="newTestExam" placeholder="Type new Exam Name..." style="display:none; margin-top:10px;"></div>
+            <p style="font-size:12px; color:#94a3b8; margin-bottom:15px;">Fast Data Entry: Adding a test will keep the Coaching and Exam selected so you can instantly add the next one!</p>
+            
+            <div class="form-group">
+                <label style="display:flex; justify-content:space-between; align-items:center;">
+                    Select Coaching
+                    <button class="btn-sm bg-purple" onclick="document.getElementById('coachName').focus(); showSection('sec-content');" style="margin-left:10px;">➕ Add Coaching</button>
+                </label>
+                <select id="testCoaching" onchange="updateTestExams()"><option value="">Loading...</option></select>
+            </div>
+            
+            <div class="form-group">
+                <label style="display:flex; justify-content:space-between; align-items:center;">
+                    Select Exam (Test Series)
+                    <button class="btn-sm bg-purple" onclick="document.getElementById('testExam').value='NEW'; checkNewExam(); document.getElementById('newTestExam').focus();" style="margin-left:10px;">➕ New Exam</button>
+                </label>
+                <select id="testExam" onchange="checkNewExam()"><option value="">Select Coaching First</option></select>
+                <input type="text" id="newTestExam" placeholder="Type new Exam Name..." style="display:none; margin-top:10px;">
+            </div>
+
             <div class="form-group"><label>Test Category</label>
                 <select id="testCategory" onchange="checkTopicTest()">
                     <option value="Paid Test">Paid Test</option><option value="Free Test">Free Test</option><option value="Mini Mock">Mini Mock</option><option value="Topic Test">Topic Wise Test</option>
@@ -134,7 +163,8 @@
             <div class="form-group"><label style="color:#60a5fa;">TCS Pattern Link (Leave empty if not available)</label><input type="text" id="testLinkTcs" placeholder="https://..."></div>
             <div class="form-group"><label style="color:#f59e0b;">Eduquity Pattern Link (Leave empty if not available)</label><input type="text" id="testLinkEdu" placeholder="https://..."></div>
             <div class="form-group"><label>PDF Solution Link (Optional)</label><input type="text" id="testPdf" placeholder="Google Drive Link"></div>
-            <button class="btn btn-green" onclick="saveTest()">Save Test</button>
+            
+            <button class="btn btn-green" id="saveTestBtn" onclick="saveTest()">Save Test & Add More</button>
 
             <hr>
             <h2>🏢 Add Coaching</h2>
@@ -324,10 +354,9 @@
             document.getElementById('subjectBox').style.display = (cat === 'Topic Test') ? 'block' : 'none';
         }
 
-        // ================= PRE-FILL DATA SYSTEM (PREVENTS DATA LOSS) =================
+        // ================= PRE-FILL DATA SYSTEM =================
         window.loadPreFillData = async function() {
             try {
-                // Support Links
                 const supSnap = await getDoc(doc(db, "App_Settings", "Support"));
                 if(supSnap.exists()) {
                     document.getElementById('supTg').value = supSnap.data().telegram || "";
@@ -335,14 +364,12 @@
                     document.getElementById('supWa').value = supSnap.data().whatsapp || "";
                     document.getElementById('supOther').value = supSnap.data().other || "";
                 }
-                // UPI Config
                 const upiSnap = await getDoc(doc(db, "App_Settings", "PaymentConfig"));
                 if(upiSnap.exists()) {
                     document.getElementById('upiId1').value = upiSnap.data().upi1 || "";
                     document.getElementById('upiId2').value = upiSnap.data().upi2 || "";
                     document.getElementById('upiMode').value = upiSnap.data().mode || "rotate";
                 }
-                // Banner Config
                 const banSnap = await getDoc(doc(db, "App_Settings", "Banner"));
                 if(banSnap.exists()) {
                     document.getElementById('banTitle').value = banSnap.data().title || "";
@@ -352,7 +379,6 @@
                 const logoSnap = await getDoc(doc(db, "App_Settings", "Logo"));
                 if(logoSnap.exists()) document.getElementById('appLogoLink').value = logoSnap.data().imageUrl || "";
                 
-                // Notices
                 const noticeSnap = await getDoc(doc(db, "Notices", "Latest_Notice"));
                 if(noticeSnap.exists()) {
                     document.getElementById('notTitle').value = noticeSnap.data().title || "";
@@ -361,7 +387,6 @@
                 const targetSnap = await getDoc(doc(db, "Notices", "Daily_Target"));
                 if(targetSnap.exists()) document.getElementById('dailyTargetDesc').value = targetSnap.data().description || "";
 
-                // Payments Info
                 const paySnap = await getDoc(doc(db, "App_Settings", "PaymentInfo"));
                 if(paySnap.exists()) document.getElementById('payInst').value = paySnap.data().instructions || "";
 
@@ -559,12 +584,34 @@
             } catch(e) { showUI(false); showCustomModal("Error", e.message); }
         }
 
+        // ================= REVENUE REVERSAL ON SERIES LOCK =================
         window.removeUserSeries = async function(userNum, seriesName) {
             if(!confirm(`Lock the series '${seriesName}' for this user?`)) return;
             showUI(true);
             try {
                 await updateDoc(doc(db, "Users", userNum), { unlockedSeries: arrayRemove(seriesName) });
-                await refreshUserDetails(userNum); showUI(false);
+                
+                const q = query(collection(db, "Pending_Payments"), 
+                    where("userNum", "==", userNum), 
+                    where("examName", "==", seriesName), 
+                    where("status", "==", "Used")
+                );
+                const paySnap = await getDocs(q);
+                const now = Date.now();
+                const oneDayMs = 24 * 60 * 60 * 1000;
+                
+                paySnap.forEach(async (d) => {
+                    const payData = d.data();
+                    if (payData.timestamp) {
+                        const payTime = new Date(payData.timestamp).getTime();
+                        if (now - payTime <= oneDayMs) {
+                            await updateDoc(doc(db, "Pending_Payments", d.id), { status: "Revoked" });
+                        }
+                    }
+                });
+
+                await refreshUserDetails(userNum); 
+                showUI(false);
             } catch(e) { showUI(false); showCustomModal("Error", e.message); }
         }
 
@@ -599,7 +646,6 @@
                     if(data.subjectName) uniqueSubjectsList.add(data.subjectName);
                 });
 
-                // Auto-Suggest Setup
                 let subOptions = "";
                 uniqueSubjectsList.forEach(s => subOptions += `<option value="${s}">`);
                 document.getElementById('existingSubjectsList').innerHTML = subOptions;
@@ -656,7 +702,7 @@
             eSelect.innerHTML = eOptions;
         }
 
-        // ================= DASHBOARD STATS =================
+        // ================= DASHBOARD STATS (WITH MANUAL MINUS CALCULATION) =================
         window.loadDashboardStats = async function() {
             showUI(true);
             try {
@@ -680,14 +726,53 @@
                     if(data.status === "Unused") unusedCodesCount++;
                 });
 
+                // Fetch Manual Revenue Deductions
+                const revConfigRef = doc(db, "App_Settings", "RevenueConfig");
+                const revSnap = await getDoc(revConfigRef);
+                let deductedAmount = 0;
+                if(revSnap.exists() && revSnap.data().manualDeduction) {
+                    deductedAmount = revSnap.data().manualDeduction;
+                }
+
+                totalRev = totalRev - deductedAmount;
+                if(totalRev < 0) totalRev = 0;
+
                 document.getElementById('statUsers').innerText = userCount;
                 document.getElementById('statCodes').innerText = unusedCodesCount;
                 document.getElementById('statRevenue').innerText = `₹ ${totalRev}`;
+                document.getElementById('totalDeductedDisplay').innerText = `₹ ${deductedAmount}`;
+                
                 showUI(false);
             } catch(e) { showUI(false); }
         }
 
-        // ================= ADD CONTENT LOGIC =================
+        // ================= MANUAL REVENUE MINUS LOGIC =================
+        window.deductRevenue = async function() {
+            const amount = parseFloat(document.getElementById('deductAmount').value);
+            if(!amount || amount <= 0) return showCustomModal("Wait", "Enter a valid amount to minus.");
+            
+            showUI(true);
+            try {
+                const ref = doc(db, "App_Settings", "RevenueConfig");
+                const snap = await getDoc(ref);
+                
+                let currentDeduction = 0;
+                if(snap.exists() && snap.data().manualDeduction) {
+                    currentDeduction = snap.data().manualDeduction;
+                }
+                
+                await setDoc(ref, { manualDeduction: currentDeduction + amount }, {merge: true});
+                
+                document.getElementById('deductAmount').value = "";
+                showUI(false);
+                showCustomModal("Success", `₹${amount} has been deducted from total revenue.`);
+                loadDashboardStats();
+            } catch(e) {
+                showUI(false); showCustomModal("Error", e.message);
+            }
+        }
+
+        // ================= ADD CONTENT LOGIC (SMART ADD MORE) =================
         window.saveTest = async function() {
             const coaching = document.getElementById('testCoaching').value;
             let exam = document.getElementById('testExam').value;
@@ -706,8 +791,19 @@
             try {
                 await setDoc(doc(db, "Tests", name), { coachingName: coaching, examName: exam, testName: name, category: cat, subjectName: subject, tcsLink: tcsLink, eduquityLink: eduLink, pdfLink: pdf }, {merge:true});
                 fetchDropdownData();
-                showUI(false); showCustomModal("Success", "Test Saved/Updated successfully.");
-                document.getElementById('testName').value = ""; document.getElementById('testLinkTcs').value = ""; document.getElementById('testLinkEdu').value = ""; document.getElementById('testPdf').value = ""; document.getElementById('testSubject').value = "";
+                showUI(false); 
+                
+                const btn = document.getElementById('saveTestBtn');
+                const oldText = btn.innerText;
+                btn.innerText = "✅ Saved! Add Next...";
+                btn.style.background = "#10b981";
+                setTimeout(() => { btn.innerText = oldText; btn.style.background = ""; }, 2000);
+
+                document.getElementById('testName').value = ""; 
+                document.getElementById('testLinkTcs').value = ""; 
+                document.getElementById('testLinkEdu').value = ""; 
+                document.getElementById('testPdf').value = ""; 
+                
             } catch(e) { showUI(false); showCustomModal("Error", e.message); }
         }
 
