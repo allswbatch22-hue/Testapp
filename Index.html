@@ -89,7 +89,7 @@
 <div class="app-container">
 
     <div id="processingUI" class="processing-overlay">
-        <div class="spinner"></div><h3 style="margin:0;">Please Wait...</h3><p style="font-size: 12px; color: #cbd5e1;">Processing secure data</p>
+        <div class="spinner"></div><h3 id="loadingTitle" style="margin:0;">Please Wait...</h3><p id="loadingDesc" style="font-size: 12px; color: #cbd5e1;">Processing secure data</p>
     </div>
 
     <div id="customModal" class="modal-overlay">
@@ -291,7 +291,11 @@
         window.paymentInst = "Click 'Pay Now' to open UPI Apps. After payment, enter 12-Digit UTR and submit. Admin will verify and unlock your series shortly.";
 
         // ================= UI HELPERS =================
-        window.showUI = (state) => document.getElementById('processingUI').style.display = state ? 'flex' : 'none';
+        window.showUI = (state, title = "Please Wait...", desc = "Processing secure data") => {
+            document.getElementById('loadingTitle').innerText = title;
+            document.getElementById('loadingDesc').innerText = desc;
+            document.getElementById('processingUI').style.display = state ? 'flex' : 'none';
+        }
         window.showCustomModal = function(title, text) { document.getElementById('modalTitle').innerText = title; document.getElementById('modalText').innerHTML = text; document.getElementById('customModal').classList.add('show'); }
         window.closeModal = (id) => document.getElementById(id).classList.remove('show');
         
@@ -320,6 +324,68 @@
             localStorage.setItem('eyeCare', document.body.classList.contains('dark-mode') ? 'on' : 'off');
         }
         if(localStorage.getItem('eyeCare') === 'on') document.body.classList.add('dark-mode');
+
+        // ================= 🚀 SMART OFFLINE CACHE (1-READ MAGIC) 🚀 =================
+        async function syncData() {
+            try {
+                // यह इकलौता Read है जो ऐप खुलने पर लगेगा
+                const vSnap = await getDoc(doc(db, "App_Settings", "DataVersion"));
+                let serverVersion = 1;
+                if(vSnap.exists() && vSnap.data().version) serverVersion = vSnap.data().version;
+
+                let localVersion = localStorage.getItem("LocalDataVersion") || 0;
+
+                // अगर एडमिन ने पैनल से कुछ नया डाला है (वर्ज़न बढ़ा है), सिर्फ तभी डेटा डाउनलोड होगा
+                if(serverVersion > localVersion) {
+                    showUI(true, "Updating App Data...", "Downloading new tests and features...");
+                    
+                    let coachings = [];
+                    const cSnap = await getDocs(collection(db, "Coachings"));
+                    cSnap.forEach(d => coachings.push(d.data()));
+                    localStorage.setItem("cache_coachings", JSON.stringify(coachings));
+
+                    let tests = [];
+                    const tSnap = await getDocs(collection(db, "Tests"));
+                    tSnap.forEach(d => tests.push(d.data()));
+                    localStorage.setItem("cache_tests", JSON.stringify(tests));
+
+                    let examBanners = {};
+                    const ebSnap = await getDocs(collection(db, "Exams"));
+                    ebSnap.forEach(d => examBanners[d.id] = d.data().banner);
+                    localStorage.setItem("cache_exam_banners", JSON.stringify(examBanners));
+
+                    let extraCards = [];
+                    const ecSnap = await getDocs(collection(db, "ExtraCards"));
+                    ecSnap.forEach(d => extraCards.push(d.data()));
+                    localStorage.setItem("cache_extra_cards", JSON.stringify(extraCards));
+
+                    let notes = [];
+                    const nSnap = await getDocs(collection(db, "Notes"));
+                    nSnap.forEach(d => notes.push(d.data()));
+                    localStorage.setItem("cache_notes", JSON.stringify(notes));
+
+                    let settings = {};
+                    const appSettingsSnap = await getDocs(collection(db, "App_Settings"));
+                    appSettingsSnap.forEach(d => { settings[d.id] = d.data(); });
+                    
+                    const noticesSnap = await getDocs(collection(db, "Notices"));
+                    noticesSnap.forEach(d => { settings[d.id] = d.data(); });
+                    localStorage.setItem("cache_settings", JSON.stringify(settings));
+
+                    let pricing = {};
+                    const pSnap = await getDocs(collection(db, "Pricing"));
+                    pSnap.forEach(d => { pricing[d.id] = d.data(); });
+                    localStorage.setItem("cache_pricing", JSON.stringify(pricing));
+
+                    // अपडेट पूरा होने पर फोन का वर्ज़न भी बढ़ा दो
+                    localStorage.setItem("LocalDataVersion", serverVersion);
+                    showUI(false);
+                }
+            } catch(e) {
+                console.error("Sync Error", e);
+                showUI(false);
+            }
+        }
 
         // ================= AUTH & RESET LOGIC =================
         window.register = async function() {
@@ -380,14 +446,19 @@
         }
 
         async function loadInitialData() {
+            // सबसे पहले बैकग्राउंड में डेटा सिंक होगा (सिर्फ 1 Read)
+            await syncData();
+
             try {
-                const logoSnap = await getDoc(doc(db, "App_Settings", "Logo"));
-                if(logoSnap.exists() && logoSnap.data().imageUrl) {
+                const settings = JSON.parse(localStorage.getItem("cache_settings") || "{}");
+                const logoSnap = settings["Logo"];
+                if(logoSnap && logoSnap.imageUrl) {
                     const img = document.getElementById('appLogoImg');
-                    img.src = logoSnap.data().imageUrl;
+                    img.src = logoSnap.imageUrl;
                     img.style.display = "block";
                 } else { document.getElementById('appLogoImg').style.display = "none"; }
             } catch(e) {}
+            
             checkLoginStatus();
         }
 
@@ -396,6 +467,7 @@
             const num = localStorage.getItem("userNum"), token = localStorage.getItem("deviceToken");
             if(!num || !token) { showUI(false); switchScreen('loginScreen'); return; }
             try {
+                // यह दूसरा Read है, ताकि हमें पता चले कि एडमिन ने कौन सी सीरीज़ अनलॉक की है
                 const docSnap = await getDoc(doc(db, "Users", num));
                 if(docSnap.exists() && docSnap.data().deviceToken === token) {
                     if(docSnap.data().isBanned) {
@@ -421,40 +493,40 @@
             } catch(e) { showUI(false); }
         }
 
-        // ================= HOME DATA =================
-        async function loadHomeData() {
+        // ================= HOME DATA (100% CACHE BASED - NO READS) =================
+        function loadHomeData() {
             try {
-                const bannerSnap = await getDoc(doc(db, "App_Settings", "Banner"));
+                const settings = JSON.parse(localStorage.getItem("cache_settings") || "{}");
+                const bannerSnap = settings["Banner"];
                 const bDiv = document.getElementById('heroBanner');
-                if(bannerSnap.exists() && bannerSnap.data().imageUrl) {
-                    bDiv.style.backgroundImage = `linear-gradient(rgba(15, 23, 42, 0.4), rgba(15, 23, 42, 0.7)), url('${bannerSnap.data().imageUrl}')`;
+                
+                if(bannerSnap && bannerSnap.imageUrl) {
+                    bDiv.style.backgroundImage = `linear-gradient(rgba(15, 23, 42, 0.4), rgba(15, 23, 42, 0.7)), url('${bannerSnap.imageUrl}')`;
                     document.getElementById('appNameDisplay').style.display = "none";
                     document.getElementById('appDescDisplay').style.display = "none";
                 } else {
                     bDiv.style.backgroundImage = `linear-gradient(135deg, #1e293b, #0f172a)`;
-                    document.getElementById('appNameDisplay').innerText = bannerSnap.exists() && bannerSnap.data().title ? bannerSnap.data().title : "Premium Test Series";
-                    document.getElementById('appDescDisplay').innerText = bannerSnap.exists() && bannerSnap.data().subtitle ? bannerSnap.data().subtitle : "India's Best Platform";
+                    document.getElementById('appNameDisplay').innerText = (bannerSnap && bannerSnap.title) ? bannerSnap.title : "Premium Test Series";
+                    document.getElementById('appDescDisplay').innerText = (bannerSnap && bannerSnap.subtitle) ? bannerSnap.subtitle : "India's Best Platform";
                     document.getElementById('appNameDisplay').style.display = "block";
                     document.getElementById('appDescDisplay').style.display = "block";
                 }
 
-                const noticeSnap = await getDoc(doc(db, "Notices", "Latest_Notice"));
-                if(noticeSnap.exists()) {
-                    document.getElementById('noticeTitle').innerText = "📢 " + noticeSnap.data().title;
-                    document.getElementById('noticeDesc').innerText = noticeSnap.data().description;
+                const noticeSnap = settings["Latest_Notice"];
+                if(noticeSnap) {
+                    document.getElementById('noticeTitle').innerText = "📢 " + noticeSnap.title;
+                    document.getElementById('noticeDesc').innerText = noticeSnap.description;
                     document.getElementById('appNotice').style.display = "block";
                 } else { document.getElementById('appNotice').style.display = "none"; }
 
-                const targetSnap = await getDoc(doc(db, "Notices", "Daily_Target"));
-                if(targetSnap.exists() && targetSnap.data().description) {
-                    document.getElementById('dailyTargetDesc').innerText = targetSnap.data().description;
+                const targetSnap = settings["Daily_Target"];
+                if(targetSnap && targetSnap.description) {
+                    document.getElementById('dailyTargetDesc').innerText = targetSnap.description;
                     document.getElementById('dailyTargetBox').style.display = "block";
                 } else { document.getElementById('dailyTargetBox').style.display = "none"; }
 
-                const supportSnap = await getDoc(doc(db, "App_Settings", "Support"));
-                if(supportSnap.exists()) {
-                    const sData = supportSnap.data();
-                    
+                const supportSnap = settings["Support"];
+                if(supportSnap) {
                     window.openSafeLink = function(url) {
                         if (!url) return;
                         if (url.startsWith('@')) url = 'https://t.me/' + url.substring(1);
@@ -462,27 +534,27 @@
                         window.location.href = url; 
                     };
 
-                    document.getElementById('linkTg').style.display = sData.telegram ? "inline-block" : "none";
-                    if(sData.telegram) document.getElementById('linkTg').onclick = () => openSafeLink(sData.telegram);
+                    document.getElementById('linkTg').style.display = supportSnap.telegram ? "inline-block" : "none";
+                    if(supportSnap.telegram) document.getElementById('linkTg').onclick = () => openSafeLink(supportSnap.telegram);
                     
-                    document.getElementById('linkYt').style.display = sData.youtube ? "inline-block" : "none";
-                    if(sData.youtube) document.getElementById('linkYt').onclick = () => openSafeLink(sData.youtube);
+                    document.getElementById('linkYt').style.display = supportSnap.youtube ? "inline-block" : "none";
+                    if(supportSnap.youtube) document.getElementById('linkYt').onclick = () => openSafeLink(supportSnap.youtube);
                     
-                    document.getElementById('linkWa').style.display = sData.whatsapp ? "inline-block" : "none";
-                    if(sData.whatsapp) document.getElementById('linkWa').onclick = () => openSafeLink(sData.whatsapp);
+                    document.getElementById('linkWa').style.display = supportSnap.whatsapp ? "inline-block" : "none";
+                    if(supportSnap.whatsapp) document.getElementById('linkWa').onclick = () => openSafeLink(supportSnap.whatsapp);
                     
-                    document.getElementById('linkOther').style.display = sData.other ? "inline-block" : "none";
-                    if(sData.other) document.getElementById('linkOther').onclick = () => openSafeLink(sData.other);
+                    document.getElementById('linkOther').style.display = supportSnap.other ? "inline-block" : "none";
+                    if(supportSnap.other) document.getElementById('linkOther').onclick = () => openSafeLink(supportSnap.other);
                 }
 
-                const paySnap = await getDoc(doc(db, "App_Settings", "PaymentInfo"));
-                if(paySnap.exists() && paySnap.data().instructions) { window.paymentInst = paySnap.data().instructions; }
+                const paySnap = settings["PaymentInfo"];
+                if(paySnap && paySnap.instructions) { window.paymentInst = paySnap.instructions; }
                 
                 const list = document.getElementById('coachingList');
-                const snap = await getDocs(collection(db, "Coachings"));
-                list.innerHTML = snap.empty ? "<p>Data uploading soon...</p>" : "";
-                snap.forEach((doc) => {
-                    const d = doc.data();
+                const coachings = JSON.parse(localStorage.getItem("cache_coachings") || "[]");
+                
+                list.innerHTML = coachings.length === 0 ? "<p>Data uploading soon...</p>" : "";
+                coachings.forEach((d) => {
                     const bannerImg = d.banner ? `<img src="${d.banner}" style="width: 50px; height: 50px; border-radius: 12px; margin-right: 15px; object-fit: cover; border: 1px solid var(--border-color);">` : ``;
                     list.innerHTML += `
                         <div class="card" onclick="goToExams('${d.name}')">
@@ -498,24 +570,21 @@
         }
 
         // ================= UPGRADED: TALLER RECTANGLE BANNERS UI =================
-        window.goToExams = async function(coaching) {
+        window.goToExams = function(coaching) {
             currentCoaching = coaching; document.getElementById('examTitle').innerText = coaching; switchScreen('examScreen');
             const list = document.getElementById('examList'); 
-            list.innerHTML = "<div class='inline-loader'>Fetching Exams...</div>";
+            
             try {
-                const q = query(collection(db, "Tests"), where("coachingName", "==", coaching));
-                const snap = await getDocs(q);
+                const tests = JSON.parse(localStorage.getItem("cache_tests") || "[]");
                 let uniqueExams = new Set(); 
-                snap.forEach(doc => uniqueExams.add(doc.data().examName));
+                tests.forEach(t => {
+                    if(t.coachingName === coaching) uniqueExams.add(t.examName);
+                });
                 
-                const bannerRef = collection(db, "Exams");
-                const bannerSnap = await getDocs(bannerRef);
-                let bannerMap = {};
-                bannerSnap.forEach(d => { bannerMap[d.id] = d.data().banner; });
+                const bannerMap = JSON.parse(localStorage.getItem("cache_exam_banners") || "{}");
 
                 list.innerHTML = uniqueExams.size === 0 ? "<p style='text-align:center;'>Exams uploading soon...</p>" : "";
                 
-                // NEW: HEIGHT INCREASED TO 180PX FOR PROMINENT BANNER LOOK
                 uniqueExams.forEach(exam => {
                     let examBanner = bannerMap[exam] || "https://placehold.co/800x400/1e1b4b/FFFFFF?text=" + encodeURIComponent(exam);
                     
@@ -531,40 +600,43 @@
             } catch(e) { list.innerHTML = "<p>Error loading</p>"; }
         }
 
-        window.goToCategory = async function(exam) { 
+        window.goToCategory = function(exam) { 
             currentExam = exam; document.getElementById('catTitle').innerText = exam; switchScreen('categoryScreen');
             
             try {
-                const priceSnap = await getDoc(doc(db, "Pricing", currentExam));
-                if(priceSnap.exists() && priceSnap.data().basePrice) { baseSeriesPrice = parseInt(priceSnap.data().basePrice); } 
+                const pricing = JSON.parse(localStorage.getItem("cache_pricing") || "{}");
+                if(pricing[currentExam] && pricing[currentExam].basePrice) { 
+                    baseSeriesPrice = parseInt(pricing[currentExam].basePrice); 
+                } 
                 else {
-                    const globalPrice = await getDoc(doc(db, "App_Settings", "Pricing"));
-                    baseSeriesPrice = (globalPrice.exists() && globalPrice.data().basePrice) ? parseInt(globalPrice.data().basePrice) : 499;
+                    const settings = JSON.parse(localStorage.getItem("cache_settings") || "{}");
+                    const globalPrice = settings["Pricing"];
+                    baseSeriesPrice = (globalPrice && globalPrice.basePrice) ? parseInt(globalPrice.basePrice) : 499;
                 }
             } catch(e) { baseSeriesPrice = 499; }
 
             const dCards = document.getElementById('dynamicCardsContainer');
             dCards.innerHTML = "";
             try {
-                const q = query(collection(db, "ExtraCards"), where("examName", "==", exam));
-                const snap = await getDocs(q);
-                snap.forEach(doc => {
-                    const data = doc.data();
-                    dCards.innerHTML += `<div class="cat-box" style="border-bottom: 5px solid #3b82f6;" onclick="window.openSafeLink('${data.link}')"><h2>🔗</h2><h3>${data.title}</h3></div>`;
+                const extraCards = JSON.parse(localStorage.getItem("cache_extra_cards") || "[]");
+                extraCards.forEach(data => {
+                    if(data.examName === exam) {
+                        dCards.innerHTML += `<div class="cat-box" style="border-bottom: 5px solid #3b82f6;" onclick="window.openSafeLink('${data.link}')"><h2>🔗</h2><h3>${data.title}</h3></div>`;
+                    }
                 });
             } catch(e) {}
         }
 
-        window.loadSubjects = async function() {
+        window.loadSubjects = function() {
             document.getElementById('listTitle').innerText = "Topic Tests"; switchScreen('subjectScreen');
-            const list = document.getElementById('subjectList'); list.innerHTML = "<div class='inline-loader'>Loading Subjects...</div>";
+            const list = document.getElementById('subjectList'); 
             try {
-                const q = query(collection(db, "Tests"), where("coachingName", "==", currentCoaching));
-                const snap = await getDocs(q);
+                const tests = JSON.parse(localStorage.getItem("cache_tests") || "[]");
                 let uniqueSubjects = new Set();
-                snap.forEach(doc => {
-                    const t = doc.data();
-                    if(t.examName === currentExam && t.category === 'Topic Test' && t.subjectName) { uniqueSubjects.add(t.subjectName); }
+                tests.forEach(t => {
+                    if(t.coachingName === currentCoaching && t.examName === currentExam && t.category === 'Topic Test' && t.subjectName) { 
+                        uniqueSubjects.add(t.subjectName); 
+                    }
                 });
                 list.innerHTML = uniqueSubjects.size === 0 ? "<p style='text-align:center;'>No subjects found!</p>" : "";
                 uniqueSubjects.forEach(sub => {
@@ -577,22 +649,21 @@
             document.getElementById('listTitle').innerText = subjectName ? subjectName : category; switchScreen('dataListScreen');
             const list = document.getElementById('dataContainer'); list.innerHTML = "<div class='inline-loader'>Loading Tests...</div>";
             try {
+                // यह तीसरा और आखिरी Read है, ताकि स्टूडेंट को लाइव पता चले कि एडमिन ने पेमेंट अप्रूव कर दिया है या नहीं।
                 let userSeries = [];
                 const userSnap = await getDoc(doc(db, "Users", localStorage.getItem("userNum")));
                 if(userSnap.exists()) userSeries = userSnap.data().unlockedSeries || [];
                 const hasFullAccess = userSeries.includes(currentExam);
 
-                const q = query(collection(db, "Tests"), where("coachingName", "==", currentCoaching));
-                const snap = await getDocs(q);
+                const tests = JSON.parse(localStorage.getItem("cache_tests") || "[]");
 
                 list.innerHTML = ""; let found = false;
-                snap.forEach((doc) => {
-                    const t = doc.data();
+                tests.forEach((t) => {
                     let match = false;
                     if(category === 'Topic Test') {
-                        if(t.examName === currentExam && t.category === category && t.subjectName === subjectName) match = true;
+                        if(t.coachingName === currentCoaching && t.examName === currentExam && t.category === category && t.subjectName === subjectName) match = true;
                     } else {
-                        if(t.examName === currentExam && t.category === category) match = true;
+                        if(t.coachingName === currentCoaching && t.examName === currentExam && t.category === category) match = true;
                     }
 
                     if(match) {
@@ -627,14 +698,14 @@
 
         window.startTest = function(link) { window.location.href = link + (link.includes('?') ? '&' : '?') + 'uid=' + localStorage.getItem("userNum"); }
 
-        window.loadNotes = async function() {
+        window.loadNotes = function() {
             document.getElementById('listTitle').innerText = "Free PDF Notes"; switchScreen('dataListScreen');
-            const list = document.getElementById('dataContainer'); list.innerHTML = "<div class='inline-loader'>Loading Notes...</div>";
+            const list = document.getElementById('dataContainer'); 
             try {
-                const snap = await getDocs(collection(db, "Notes"));
-                list.innerHTML = snap.empty ? "<p style='text-align:center;'>Notes uploading soon...</p>" : "";
-                snap.forEach((doc) => {
-                    list.innerHTML += `<div class="card" style="border-left-color: #8b5cf6;"><div class="card-content"><h3>${doc.data().title}</h3></div><button class="btn-sm bg-purple" onclick="window.openSafeLink('${doc.data().link}')">📥 View</button></div>`;
+                const notes = JSON.parse(localStorage.getItem("cache_notes") || "[]");
+                list.innerHTML = notes.length === 0 ? "<p style='text-align:center;'>Notes uploading soon...</p>" : "";
+                notes.forEach((n) => {
+                    list.innerHTML += `<div class="card" style="border-left-color: #8b5cf6;"><div class="card-content"><h3>${n.title}</h3></div><button class="btn-sm bg-purple" onclick="window.openSafeLink('${n.link}')">📥 View</button></div>`;
                 });
             } catch(e) { list.innerHTML = "Error loading"; }
         }
@@ -670,6 +741,7 @@
             switchScreen('unlockScreen');
         }
 
+        // कूपन हमेशा लाइव चेक होगा ताकि सिक्योरिटी रहे
         window.applyCoupon = async function() {
             const code = document.getElementById('couponInput').value.trim().toUpperCase();
             if(!code) return showCustomModal("Wait", "Enter coupon code");
@@ -700,6 +772,7 @@
             } catch(e) { showUI(false); }
         }
 
+        // पेमेंट हमेशा लाइव चेक होगा ताकि UPI रोटेशन सही काम करे
         window.payViaUPI = async function() {
             if(currentFinalPrice <= 0) return showCustomModal("Wait", "Amount is 0. Direct unlock coming soon.");
             
@@ -750,6 +823,7 @@
             }
         }
 
+        // UTR भी लाइव सबमिट होगा
         window.verifyUtrAndUnlock = async function() {
             const utr = document.getElementById('utrInput').value.trim();
             if(utr.length < 12) return showCustomModal("Wait", "Please enter correct 12-Digit Reference/UTR Number!");
