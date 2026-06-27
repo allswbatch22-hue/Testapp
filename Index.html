@@ -462,23 +462,41 @@
             checkLoginStatus();
         }
 
+        // 🔥 FIX 1: AUTO-LOGOUT BUG SOLVED 🔥
         async function checkLoginStatus() {
             showUI(true); 
             const num = localStorage.getItem("userNum"), token = localStorage.getItem("deviceToken");
             if(!num || !token) { showUI(false); switchScreen('loginScreen'); return; }
+            
+            // अगर नेट बंद है, तो बिना चेक किए सीधा कैश से ऐप खोल दो
+            if (!navigator.onLine) {
+                showUI(false);
+                document.getElementById('displayUserName').innerText = localStorage.getItem("userName") || "Student";
+                switchScreen('homeScreen'); loadHomeData(); 
+                return;
+            }
+
             try {
-                // यह दूसरा Read है, ताकि हमें पता चले कि एडमिन ने कौन सी सीरीज़ अनलॉक की है
                 const docSnap = await getDoc(doc(db, "Users", num));
-                if(docSnap.exists() && docSnap.data().deviceToken === token) {
-                    if(docSnap.data().isBanned) {
-                        if(!docSnap.data().banUntil || new Date(docSnap.data().banUntil) > new Date()) {
-                            executeLogout(); return;
+                if(docSnap.exists()) {
+                    if(docSnap.data().deviceToken === token) {
+                        if(docSnap.data().isBanned) {
+                            if(!docSnap.data().banUntil || new Date(docSnap.data().banUntil) > new Date()) {
+                                executeLogout(); return;
+                            }
                         }
-                    }
-                    document.getElementById('displayUserName').innerText = localStorage.getItem("userName") || "Student";
-                    switchScreen('homeScreen'); loadHomeData(); 
-                } else { executeLogout(); }
-            } catch(e) { executeLogout(); }
+                        // यूज़र के अनलॉक सीरीज़ को भी ऑफलाइन के लिए सेव कर लो
+                        localStorage.setItem("userUnlockedSeries", JSON.stringify(docSnap.data().unlockedSeries || []));
+                        document.getElementById('displayUserName').innerText = localStorage.getItem("userName") || "Student";
+                        switchScreen('homeScreen'); loadHomeData(); 
+                    } else { executeLogout(); } // Token mismatch
+                } else { executeLogout(); } // User deleted
+            } catch(e) { 
+                // नेट स्लो होने पर एरर आए, तो भी कैश से ऐप खोल दो!
+                showUI(false);
+                document.getElementById('displayUserName').innerText = localStorage.getItem("userName") || "Student";
+                switchScreen('homeScreen'); loadHomeData(); 
+            }
         }
 
         window.showProfile = async function() {
@@ -490,7 +508,12 @@
                     const d = docSnap.data();
                     showCustomModal("Profile", `<b>Name:</b> ${d.name}<br><b>Mobile:</b> ${d.number}<br><br><b style="color:#10b981;">🔓 Premium Series Access: ${d.unlockedSeries ? d.unlockedSeries.length : 0}</b>`);
                 }
-            } catch(e) { showUI(false); }
+            } catch(e) { 
+                // Offline fallback
+                showUI(false);
+                let unlocked = JSON.parse(localStorage.getItem("userUnlockedSeries") || "[]");
+                showCustomModal("Profile (Offline)", `<b>Name:</b> ${localStorage.getItem("userName")}<br><b>Mobile:</b> ${localStorage.getItem("userNum")}<br><br><b style="color:#10b981;">🔓 Premium Series Access: ${unlocked.length}</b>`);
+            }
         }
 
         // ================= HOME DATA (100% CACHE BASED - NO READS) =================
@@ -525,13 +548,15 @@
                     document.getElementById('dailyTargetBox').style.display = "block";
                 } else { document.getElementById('dailyTargetBox').style.display = "none"; }
 
+                // 🔥 FIX 2: 404 ERROR ON TELEGRAM/YT SOLVED 🔥
                 const supportSnap = settings["Support"];
                 if(supportSnap) {
                     window.openSafeLink = function(url) {
                         if (!url) return;
                         if (url.startsWith('@')) url = 'https://t.me/' + url.substring(1);
                         else if (!url.startsWith('http') && !url.includes('://')) url = 'https://' + url;
-                        window.location.href = url; 
+                        // अब यह ऐप को क्रैश नहीं करेगा, बल्कि नए टैब (background) में खुलेगा
+                        window.open(url, '_blank'); 
                     };
 
                     document.getElementById('linkTg').style.display = supportSnap.telegram ? "inline-block" : "none";
@@ -649,12 +674,23 @@
             document.getElementById('listTitle').innerText = subjectName ? subjectName : category; switchScreen('dataListScreen');
             const list = document.getElementById('dataContainer'); list.innerHTML = "<div class='inline-loader'>Loading Tests...</div>";
             try {
-                // यह तीसरा और आखिरी Read है, ताकि स्टूडेंट को लाइव पता चले कि एडमिन ने पेमेंट अप्रूव कर दिया है या नहीं।
                 let userSeries = [];
-                const userSnap = await getDoc(doc(db, "Users", localStorage.getItem("userNum")));
-                if(userSnap.exists()) userSeries = userSnap.data().unlockedSeries || [];
+                // अगर नेट चल रहा है, तो लाइव चेक करो, वरना कैश से यूज़र का अनलॉक डेटा उठाओ
+                if(navigator.onLine) {
+                    try {
+                        const userSnap = await getDoc(doc(db, "Users", localStorage.getItem("userNum")));
+                        if(userSnap.exists()) {
+                            userSeries = userSnap.data().unlockedSeries || [];
+                            localStorage.setItem("userUnlockedSeries", JSON.stringify(userSeries));
+                        }
+                    } catch(err) {
+                        userSeries = JSON.parse(localStorage.getItem("userUnlockedSeries") || "[]");
+                    }
+                } else {
+                    userSeries = JSON.parse(localStorage.getItem("userUnlockedSeries") || "[]");
+                }
+                
                 const hasFullAccess = userSeries.includes(currentExam);
-
                 const tests = JSON.parse(localStorage.getItem("cache_tests") || "[]");
 
                 list.innerHTML = ""; let found = false;
@@ -741,10 +777,10 @@
             switchScreen('unlockScreen');
         }
 
-        // कूपन हमेशा लाइव चेक होगा ताकि सिक्योरिटी रहे
         window.applyCoupon = async function() {
             const code = document.getElementById('couponInput').value.trim().toUpperCase();
             if(!code) return showCustomModal("Wait", "Enter coupon code");
+            if(!navigator.onLine) return showCustomModal("Offline", "Please connect to internet to apply coupons!");
             showUI(true);
             try {
                 const snap = await getDoc(doc(db, "Coupons", code));
@@ -772,26 +808,39 @@
             } catch(e) { showUI(false); }
         }
 
-        // पेमेंट हमेशा लाइव चेक होगा ताकि UPI रोटेशन सही काम करे
+        // 🔥 FIX 3: 404 ERROR ON UPI PAYMENT SOLVED 🔥
         window.payViaUPI = async function() {
             if(currentFinalPrice <= 0) return showCustomModal("Wait", "Amount is 0. Direct unlock coming soon.");
             
             showUI(true);
             try {
-                const payConfigRef = doc(db, "App_Settings", "PaymentConfig");
-                const paySnap = await getDoc(payConfigRef);
+                // Payment UPI details will be fetched from cache if offline
+                let paySnap = null;
+                if(navigator.onLine){
+                    paySnap = await getDoc(doc(db, "App_Settings", "PaymentConfig"));
+                }
 
                 let turn = 1; 
                 let upiId_1 = "your_first_upi@ybl"; 
                 let upiId_2 = "your_second_upi@ybl"; 
                 let mode = "rotate"; 
 
-                if(paySnap.exists() && paySnap.data()) { 
+                if(paySnap && paySnap.exists() && paySnap.data()) { 
                     const pd = paySnap.data();
                     if(pd.currentTurn) turn = pd.currentTurn; 
                     if(pd.upi1) upiId_1 = pd.upi1;
                     if(pd.upi2) upiId_2 = pd.upi2;
                     if(pd.mode) mode = pd.mode; 
+                } else {
+                    // Fallback to cache if offline
+                    const settings = JSON.parse(localStorage.getItem("cache_settings") || "{}");
+                    const pd = settings["PaymentConfig"];
+                    if (pd) {
+                        if(pd.currentTurn) turn = pd.currentTurn; 
+                        if(pd.upi1) upiId_1 = pd.upi1;
+                        if(pd.upi2) upiId_2 = pd.upi2;
+                        if(pd.mode) mode = pd.mode; 
+                    }
                 }
 
                 let finalUpiId = "";
@@ -807,7 +856,9 @@
                     finalUpiId = (turn === 1) ? upiId_1 : upiId_2;
                     upiLabel = (turn === 1) ? "UPI_1" : "UPI_2";
                     let nextTurn = (turn === 1) ? 2 : 1;
-                    await setDoc(payConfigRef, { currentTurn: nextTurn }, { merge: true });
+                    if(navigator.onLine){
+                        await setDoc(doc(db, "App_Settings", "PaymentConfig"), { currentTurn: nextTurn }, { merge: true });
+                    }
                 }
 
                 localStorage.setItem("lastPaidUpi", upiLabel); 
@@ -817,16 +868,22 @@
                 const transactionNote = `Payment_for_${currentExam.replace(/\s+/g, '_')}`; 
                 const upiLink = `upi://pay?pa=${finalUpiId}&pn=${merchantName}&am=${currentFinalPrice}&cu=INR&tn=${transactionNote}`;
                 
-                window.location.href = upiLink;
+                // अब ऐप अपना पेज नहीं छोड़ेगा, पेमेंट बैकग्राउंड (iframe) से ट्रिगर होगी!
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.src = upiLink;
+                document.body.appendChild(iframe);
+                setTimeout(() => document.body.removeChild(iframe), 2000); // 2 सेकंड बाद डिब्बा डिलीट
+
             } catch(e) {
-                showUI(false); showCustomModal("Error", "Error fetching payment link. Check internet.");
+                showUI(false); showCustomModal("Error", "Error opening payment link.");
             }
         }
 
-        // UTR भी लाइव सबमिट होगा
         window.verifyUtrAndUnlock = async function() {
             const utr = document.getElementById('utrInput').value.trim();
             if(utr.length < 12) return showCustomModal("Wait", "Please enter correct 12-Digit Reference/UTR Number!");
+            if(!navigator.onLine) return showCustomModal("Offline", "Please connect to internet to submit UTR!");
 
             const usedUpi = localStorage.getItem("lastPaidUpi") || "Unknown"; 
             const userNum = localStorage.getItem("userNum");
