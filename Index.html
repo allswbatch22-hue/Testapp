@@ -111,7 +111,7 @@
         </div>
     </div>
 
-    <!-- Login/Register/Forgot Screens -->
+    <!-- Login/Register/Forgot Screens[span_1](start_span)[span_1](end_span) -->
     <div id="loginScreen" class="screen">
         <div style="background: var(--bg-card); padding: 30px 20px; border-radius: 24px; margin: auto 0; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border: 1px solid var(--border-color);">
             <img id="appLogoImg" src="" style="display:none; max-width: 100px; height: auto; margin: 0 auto 15px auto; border-radius: 12px;">
@@ -152,7 +152,7 @@
         </div>
     </div>
 
-    <!-- Home Screen -->
+    <!-- Home Screen[span_2](start_span)[span_2](end_span) -->
     <div id="homeScreen" class="screen" style="padding: 0;">
         <div class="header">
             <div>
@@ -192,14 +192,13 @@
         </div>
     </div>
 
-    <!-- Exam Screen (UPDATED: BANNERS ARE NOW TALLER - 180px HEIGHT) -->
+    <!-- Exam Screen (Banners are 180px height)[span_3](start_span)[span_3](end_span) -->
     <div id="examScreen" class="screen" style="padding:0;">
         <div class="header"><button class="icon-btn" onclick="switchScreen('homeScreen')">❮</button><span id="examTitle">Exams</span><div style="width:35px;"></div></div>
-        
         <div style="padding: 20px; display: flex; flex-direction: column; gap: 20px;" id="examList"></div>
     </div>
 
-    <!-- Category Screen (With Dynamic Extra Cards Feature) -->
+    <!-- Category Screen[span_4](start_span)[span_4](end_span) -->
     <div id="categoryScreen" class="screen" style="padding:0;">
         <div class="header"><button class="icon-btn" onclick="switchScreen('examScreen')">❮</button><span id="catTitle">Categories</span><div style="width:35px;"></div></div>
         <div style="padding: 20px;">
@@ -215,17 +214,19 @@
         </div>
     </div>
 
+    <!-- Subject Screen[span_5](start_span)[span_5](end_span) -->
     <div id="subjectScreen" class="screen" style="padding:0;">
         <div class="header"><button class="icon-btn" onclick="switchScreen('categoryScreen')">❮</button><span>Subjects</span><div style="width:35px;"></div></div>
         <div style="padding: 20px;" id="subjectList"></div>
     </div>
 
+    <!-- Data List Screen[span_6](start_span)[span_6](end_span) -->
     <div id="dataListScreen" class="screen" style="padding:0;">
         <div class="header"><button class="icon-btn" onclick="switchScreen('categoryScreen')">❮</button><span id="listTitle">Available Data</span><div style="width:35px;"></div></div>
         <div style="padding: 20px;" id="dataContainer"></div>
     </div>
 
-    <!-- Unlock / Payment Screen -->
+    <!-- Unlock / Payment Screen[span_7](start_span)[span_7](end_span) -->
     <div id="unlockScreen" class="screen" style="padding:0;">
         <div class="header" style="background: linear-gradient(135deg, #ef4444, #f97316);"><button class="icon-btn" onclick="switchScreen('dataListScreen')">❮</button><span>Unlock Series</span><div style="width:35px;"></div></div>
         <div style="padding: 20px;">
@@ -290,7 +291,7 @@
         let currentFinalPrice = 499;
         window.paymentInst = "Click 'Pay Now' to open UPI Apps. After payment, enter 12-Digit UTR and submit. Admin will verify and unlock your series shortly.";
 
-        // ================= UI HELPERS =================
+        // ================= UI HELPERS[span_8](start_span)[span_8](end_span) =================
         window.showUI = (state, title = "Please Wait...", desc = "Processing secure data") => {
             document.getElementById('loadingTitle').innerText = title;
             document.getElementById('loadingDesc').innerText = desc;
@@ -328,14 +329,12 @@
         // ================= 🚀 SMART OFFLINE CACHE (1-READ MAGIC) 🚀 =================
         async function syncData() {
             try {
-                // यह इकलौता Read है जो ऐप खुलने पर लगेगा
                 const vSnap = await getDoc(doc(db, "App_Settings", "DataVersion"));
                 let serverVersion = 1;
                 if(vSnap.exists() && vSnap.data().version) serverVersion = vSnap.data().version;
 
                 let localVersion = localStorage.getItem("LocalDataVersion") || 0;
 
-                // अगर एडमिन ने पैनल से कुछ नया डाला है (वर्ज़न बढ़ा है), सिर्फ तभी डेटा डाउनलोड होगा
                 if(serverVersion > localVersion) {
                     showUI(true, "Updating App Data...", "Downloading new tests and features...");
                     
@@ -377,7 +376,6 @@
                     pSnap.forEach(d => { pricing[d.id] = d.data(); });
                     localStorage.setItem("cache_pricing", JSON.stringify(pricing));
 
-                    // अपडेट पूरा होने पर फोन का वर्ज़न भी बढ़ा दो
                     localStorage.setItem("LocalDataVersion", serverVersion);
                     showUI(false);
                 }
@@ -387,7 +385,7 @@
             }
         }
 
-        // ================= AUTH & RESET LOGIC =================
+        // ================= AUTH & RESET LOGIC[span_9](start_span)[span_9](end_span) =================
         window.register = async function() {
             const name = document.getElementById('regName').value, num = document.getElementById('regNum').value, dob = document.getElementById('regDob').value, pass = document.getElementById('regPass').value;
             if(!name || !num || !dob || !pass) return showCustomModal("Wait", "Fill all details including DOB!");
@@ -446,7 +444,6 @@
         }
 
         async function loadInitialData() {
-            // सबसे पहले बैकग्राउंड में डेटा सिंक होगा (सिर्फ 1 Read)
             await syncData();
 
             try {
@@ -468,7 +465,6 @@
             const num = localStorage.getItem("userNum"), token = localStorage.getItem("deviceToken");
             if(!num || !token) { showUI(false); switchScreen('loginScreen'); return; }
             
-            // अगर नेट बंद है, तो बिना चेक किए सीधा कैश से ऐप खोल दो
             if (!navigator.onLine) {
                 showUI(false);
                 document.getElementById('displayUserName').innerText = localStorage.getItem("userName") || "Student";
@@ -485,14 +481,12 @@
                                 executeLogout(); return;
                             }
                         }
-                        // यूज़र के अनलॉक सीरीज़ को भी ऑफलाइन के लिए सेव कर लो
                         localStorage.setItem("userUnlockedSeries", JSON.stringify(docSnap.data().unlockedSeries || []));
                         document.getElementById('displayUserName').innerText = localStorage.getItem("userName") || "Student";
                         switchScreen('homeScreen'); loadHomeData(); 
-                    } else { executeLogout(); } // Token mismatch
-                } else { executeLogout(); } // User deleted
+                    } else { executeLogout(); } 
+                } else { executeLogout(); } 
             } catch(e) { 
-                // नेट स्लो होने पर एरर आए, तो भी कैश से ऐप खोल दो!
                 showUI(false);
                 document.getElementById('displayUserName').innerText = localStorage.getItem("userName") || "Student";
                 switchScreen('homeScreen'); loadHomeData(); 
@@ -509,12 +503,25 @@
                     showCustomModal("Profile", `<b>Name:</b> ${d.name}<br><b>Mobile:</b> ${d.number}<br><br><b style="color:#10b981;">🔓 Premium Series Access: ${d.unlockedSeries ? d.unlockedSeries.length : 0}</b>`);
                 }
             } catch(e) { 
-                // Offline fallback
                 showUI(false);
                 let unlocked = JSON.parse(localStorage.getItem("userUnlockedSeries") || "[]");
                 showCustomModal("Profile (Offline)", `<b>Name:</b> ${localStorage.getItem("userName")}<br><b>Mobile:</b> ${localStorage.getItem("userNum")}<br><br><b style="color:#10b981;">🔓 Premium Series Access: ${unlocked.length}</b>`);
             }
         }
+
+        // ================= 🔥 FIX 2: 404 KODULAR ACTIVITY STARTER INTEGRATION 🔥 =================
+        window.openSafeLink = function(url) {
+            if (!url) return;
+            if (url.startsWith('@')) url = 'https://t.me/' + url.substring(1);
+            else if (!url.startsWith('http') && !url.includes('://')) url = 'https://' + url;
+            
+            // अगर Kodular का AppInventor मौजूद है, तो उसे लिंक भेज दो ताकि वो बाहर खुल सके
+            if (window.AppInventor) {
+                window.AppInventor.setWebViewString(url);
+            } else {
+                window.open(url, '_blank');
+            }
+        };
 
         // ================= HOME DATA (100% CACHE BASED - NO READS) =================
         function loadHomeData() {
@@ -548,28 +555,19 @@
                     document.getElementById('dailyTargetBox').style.display = "block";
                 } else { document.getElementById('dailyTargetBox').style.display = "none"; }
 
-                // 🔥 FIX 2: 404 ERROR ON TELEGRAM/YT SOLVED 🔥
                 const supportSnap = settings["Support"];
                 if(supportSnap) {
-                    window.openSafeLink = function(url) {
-                        if (!url) return;
-                        if (url.startsWith('@')) url = 'https://t.me/' + url.substring(1);
-                        else if (!url.startsWith('http') && !url.includes('://')) url = 'https://' + url;
-                        // अब यह ऐप को क्रैश नहीं करेगा, बल्कि नए टैब (background) में खुलेगा
-                        window.open(url, '_blank'); 
-                    };
-
                     document.getElementById('linkTg').style.display = supportSnap.telegram ? "inline-block" : "none";
-                    if(supportSnap.telegram) document.getElementById('linkTg').onclick = () => openSafeLink(supportSnap.telegram);
+                    if(supportSnap.telegram) document.getElementById('linkTg').onclick = () => window.openSafeLink(supportSnap.telegram);
                     
                     document.getElementById('linkYt').style.display = supportSnap.youtube ? "inline-block" : "none";
-                    if(supportSnap.youtube) document.getElementById('linkYt').onclick = () => openSafeLink(supportSnap.youtube);
+                    if(supportSnap.youtube) document.getElementById('linkYt').onclick = () => window.openSafeLink(supportSnap.youtube);
                     
                     document.getElementById('linkWa').style.display = supportSnap.whatsapp ? "inline-block" : "none";
-                    if(supportSnap.whatsapp) document.getElementById('linkWa').onclick = () => openSafeLink(supportSnap.whatsapp);
+                    if(supportSnap.whatsapp) document.getElementById('linkWa').onclick = () => window.openSafeLink(supportSnap.whatsapp);
                     
                     document.getElementById('linkOther').style.display = supportSnap.other ? "inline-block" : "none";
-                    if(supportSnap.other) document.getElementById('linkOther').onclick = () => openSafeLink(supportSnap.other);
+                    if(supportSnap.other) document.getElementById('linkOther').onclick = () => window.openSafeLink(supportSnap.other);
                 }
 
                 const paySnap = settings["PaymentInfo"];
@@ -675,7 +673,6 @@
             const list = document.getElementById('dataContainer'); list.innerHTML = "<div class='inline-loader'>Loading Tests...</div>";
             try {
                 let userSeries = [];
-                // अगर नेट चल रहा है, तो लाइव चेक करो, वरना कैश से यूज़र का अनलॉक डेटा उठाओ
                 if(navigator.onLine) {
                     try {
                         const userSnap = await getDoc(doc(db, "Users", localStorage.getItem("userNum")));
@@ -732,7 +729,11 @@
             } catch(e) { list.innerHTML = "Error loading"; }
         }
 
-        window.startTest = function(link) { window.location.href = link + (link.includes('?') ? '&' : '?') + 'uid=' + localStorage.getItem("userNum"); }
+        // टेस्ट लिंक्स भी Activity Starter रूट का उपयोग करेंगे ताकि 404 क्रैश न हो
+        window.startTest = function(link) { 
+            let finalLink = link + (link.includes('?') ? '&' : '?') + 'uid=' + localStorage.getItem("userNum");
+            window.openSafeLink(finalLink);
+        }
 
         window.loadNotes = function() {
             document.getElementById('listTitle').innerText = "Free PDF Notes"; switchScreen('dataListScreen');
@@ -814,7 +815,6 @@
             
             showUI(true);
             try {
-                // Payment UPI details will be fetched from cache if offline
                 let paySnap = null;
                 if(navigator.onLine){
                     paySnap = await getDoc(doc(db, "App_Settings", "PaymentConfig"));
@@ -832,7 +832,6 @@
                     if(pd.upi2) upiId_2 = pd.upi2;
                     if(pd.mode) mode = pd.mode; 
                 } else {
-                    // Fallback to cache if offline
                     const settings = JSON.parse(localStorage.getItem("cache_settings") || "{}");
                     const pd = settings["PaymentConfig"];
                     if (pd) {
@@ -868,12 +867,12 @@
                 const transactionNote = `Payment_for_${currentExam.replace(/\s+/g, '_')}`; 
                 const upiLink = `upi://pay?pa=${finalUpiId}&pn=${merchantName}&am=${currentFinalPrice}&cu=INR&tn=${transactionNote}`;
                 
-                // अब ऐप अपना पेज नहीं छोड़ेगा, पेमेंट बैकग्राउंड (iframe) से ट्रिगर होगी!
-                const iframe = document.createElement('iframe');
-                iframe.style.display = 'none';
-                iframe.src = upiLink;
-                document.body.appendChild(iframe);
-                setTimeout(() => document.body.removeChild(iframe), 2000); // 2 सेकंड बाद डिब्बा डिलीट
+                // अब पेमेंट लिंक भी Activity Starter के पास जाएगी ताकि WebView क्रैश न हो
+                if (window.AppInventor) {
+                    window.AppInventor.setWebViewString(upiLink);
+                } else {
+                    window.location.href = upiLink;
+                }
 
             } catch(e) {
                 showUI(false); showCustomModal("Error", "Error opening payment link.");
