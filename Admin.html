@@ -74,7 +74,6 @@
         </div>
     </div>
 
-    <!-- User Moderation Details -->
     <div id="userDetailModal" class="modal-overlay">
         <div class="modal-box" style="text-align: left;">
             <h2 style="color: #10b981; border:none; margin-bottom:5px; margin-top:0;">👤 User Details & Moderation</h2>
@@ -107,18 +106,15 @@
                 <div class="stat-card" style="border-color:#f59e0b;"><h3 id="statCodes" style="color:#fbbf24;">0</h3><p>Unused Codes</p></div>
             </div>
 
-            <!-- APP LOAD & ANALYTICS UI -->
             <hr>
             <h2 style="color:#60a5fa;">🚀 App Load & System Analytics</h2>
             <div class="dashboard-grid">
-                <!-- Daily Writes Tracker -->
                 <div class="stat-card" style="background: linear-gradient(135deg, #0f172a, #1e293b); border-color:#8b5cf6;">
                     <h3 id="dailyWritesCount" style="color:#c084fc;">0</h3>
                     <p style="color:#94a3b8;">Daily DB Writes (API Load)</p>
                     <div style="font-size:11px; color:#10b981; margin-top:8px; font-weight:bold;">🕒 Resets Daily at Midnight</div>
                 </div>
 
-                <!-- Popular Sections Progress Bars -->
                 <div class="stat-card" style="background: linear-gradient(135deg, #0f172a, #1e293b); border-color:#3b82f6; text-align:left; padding:20px;">
                     <p style="margin-top:0; color:#fff; font-size:14px; font-weight:bold; border-bottom:1px solid #334155; padding-bottom:8px;">🔥 Popular Sections (User Load)</p>
                     
@@ -137,7 +133,6 @@
                 </div>
             </div>
 
-            <!-- REVENUE MANUAL DEDUCTION FEATURE -->
             <hr>
             <h3 style="color:#ef4444; margin-top:0;">📉 Adjust Total Revenue (Manual Minus)</h3>
             <p style="font-size:12px; color:#94a3b8;">Enter amount to manually deduct from the Total Revenue shown above (e.g. for expenses or refunds).</p>
@@ -340,7 +335,6 @@
             <button class="btn" onclick="savePaymentInfo()">Save Instructions</button>
         </div>
 
-        <!-- NEW: TEAM MANAGEMENT SECTION (NAME & PASSWORD) -->
         <div id="sec-team" class="section">
             <h2>🛡️ Team Member Management</h2>
             <p style="font-size:12px; color:#94a3b8;">Add team members using Name and Password. They will use these to log into the Team Panel.</p>
@@ -445,6 +439,21 @@
         window.trackedSetDoc = async function(...args) { trackAdminWrite(); return originalSetDoc(...args); }
         window.trackedUpdateDoc = async function(...args) { trackAdminWrite(); return originalUpdateDoc(...args); }
         window.trackedDeleteDoc = async function(...args) { trackAdminWrite(); return originalDeleteDoc(...args); }
+
+        // ================= 🔥 NEW: APP VERSION TRACKER (FOR OFFLINE CACHE/TINYDB) 🔥 =================
+        window.updateAppVersion = async function() {
+            try {
+                const ref = doc(db, "App_Settings", "DataVersion");
+                const snap = await getDoc(ref);
+                let currentVersion = 1;
+                if(snap.exists() && snap.data().version) {
+                    currentVersion = snap.data().version;
+                }
+                // Using standard setDoc so we don't mess up the daily "Admin Writes" tracker unnecessarily
+                await originalSetDoc(ref, { version: currentVersion + 1 }, {merge: true});
+                console.log("🔥 App Data Version Updated to: " + (currentVersion + 1));
+            } catch(e) { console.log("Version update error:", e); }
+        }
 
         // ================= PRE-FILL DATA SYSTEM =================
         window.loadPreFillData = async function() {
@@ -954,6 +963,8 @@
             showUI(true);
             try {
                 await trackedSetDoc(doc(db, "Tests", name), { coachingName: coaching, examName: exam, testName: name, category: cat, subjectName: subject, tcsLink: tcsLink, eduquityLink: eduLink, pdfLink: pdf }, {merge:true});
+                await updateAppVersion(); // VERSION UPDATE
+                
                 fetchDropdownData();
                 showUI(false); 
                 
@@ -975,14 +986,29 @@
             const name = document.getElementById('coachName').value, img = document.getElementById('coachImg').value;
             if(!name) return showCustomModal("Wait", "Enter Coaching Name");
             showUI(true);
-            try { await trackedSetDoc(doc(db, "Coachings", name), { name: name, banner: img }, {merge:true}); fetchDropdownData(); showUI(false); showCustomModal("Success", "Coaching Saved!"); document.getElementById('coachName').value=""; document.getElementById('coachImg').value=""; } catch(e) { showUI(false); }
+            try { 
+                await trackedSetDoc(doc(db, "Coachings", name), { name: name, banner: img }, {merge:true}); 
+                await updateAppVersion(); // VERSION UPDATE
+                
+                fetchDropdownData(); 
+                showUI(false); 
+                showCustomModal("Success", "Coaching Saved!"); 
+                document.getElementById('coachName').value=""; 
+                document.getElementById('coachImg').value=""; 
+            } catch(e) { showUI(false); }
         }
 
         window.removeCoachingBanner = async function() {
             const name = document.getElementById('coachName').value;
             if(!name) return showCustomModal("Wait", "Type the Coaching Name to remove its banner.");
             showUI(true);
-            try { await trackedUpdateDoc(doc(db, "Coachings", name), { banner: "" }); showUI(false); showCustomModal("Success", "Coaching Banner Removed!"); } catch(e) { showUI(false); showCustomModal("Error", e.message); }
+            try { 
+                await trackedUpdateDoc(doc(db, "Coachings", name), { banner: "" }); 
+                await updateAppVersion(); // VERSION UPDATE
+                
+                showUI(false); 
+                showCustomModal("Success", "Coaching Banner Removed!"); 
+            } catch(e) { showUI(false); showCustomModal("Error", e.message); }
         }
 
         window.saveExtraCard = async function() {
@@ -994,7 +1020,10 @@
             try {
                 const docId = exam.replace(/\s+/g, '_') + "_" + Date.now();
                 await trackedSetDoc(doc(db, "ExtraCards", docId), { examName: exam, title: title, link: link });
-                showUI(false); showCustomModal("Success", "Custom Card Added Successfully!");
+                await updateAppVersion(); // VERSION UPDATE
+                
+                showUI(false); 
+                showCustomModal("Success", "Custom Card Added Successfully!");
                 document.getElementById('extraTitle').value=""; document.getElementById('extraLink').value="";
             } catch(e) { showUI(false); showCustomModal("Error", e.message); }
         }
@@ -1006,6 +1035,8 @@
             showUI(true);
             try {
                 await trackedSetDoc(doc(db, "Exams", exam), { examName: exam, banner: img }, {merge:true});
+                await updateAppVersion(); // VERSION UPDATE
+                
                 showUI(false); showCustomModal("Success", `Banner link saved for ${exam}`);
                 document.getElementById('examBannerImg').value = "";
             } catch(e) { showUI(false); showCustomModal("Error", e.message); }
@@ -1015,51 +1046,109 @@
             const exam = document.getElementById('bannerExam').value;
             if(!exam) return showCustomModal("Wait", "Select Exam first!");
             showUI(true);
-            try { await trackedUpdateDoc(doc(db, "Exams", exam), { banner: "" }); showUI(false); showCustomModal("Success", `Banner removed from ${exam}`); } catch(e) { showUI(false); showCustomModal("Error", e.message); }
+            try { 
+                await trackedUpdateDoc(doc(db, "Exams", exam), { banner: "" }); 
+                await updateAppVersion(); // VERSION UPDATE
+                
+                showUI(false); 
+                showCustomModal("Success", `Banner removed from ${exam}`); 
+            } catch(e) { showUI(false); showCustomModal("Error", e.message); }
         }
 
         window.saveNote = async function() {
             const title = document.getElementById('noteTitle').value, link = document.getElementById('noteLink').value;
             if(!title || !link) return;
             showUI(true);
-            try { await trackedSetDoc(doc(db, "Notes", title), { title, link }); showUI(false); showCustomModal("Success", "Notes Added!"); document.getElementById('noteTitle').value=""; document.getElementById('noteLink').value=""; } catch(e) { showUI(false); }
+            try { 
+                await trackedSetDoc(doc(db, "Notes", title), { title, link }); 
+                await updateAppVersion(); // VERSION UPDATE
+                
+                showUI(false); 
+                showCustomModal("Success", "Notes Added!"); 
+                document.getElementById('noteTitle').value=""; 
+                document.getElementById('noteLink').value=""; 
+            } catch(e) { showUI(false); }
         }
 
         // ================= MARKETING =================
         window.saveLogo = async function() {
             showUI(true);
-            try { await trackedSetDoc(doc(db, "App_Settings", "Logo"), { imageUrl: document.getElementById('appLogoLink').value }); showUI(false); showCustomModal("Success", "App Logo Updated Successfully!"); } catch(e) { showUI(false); }
+            try { 
+                await trackedSetDoc(doc(db, "App_Settings", "Logo"), { imageUrl: document.getElementById('appLogoLink').value }); 
+                await updateAppVersion(); // VERSION UPDATE
+                
+                showUI(false); showCustomModal("Success", "App Logo Updated Successfully!"); 
+            } catch(e) { showUI(false); }
         }
         window.removeLogo = async function() {
             showUI(true);
-            try { await trackedDeleteDoc(doc(db, "App_Settings", "Logo")); showUI(false); showCustomModal("Success", "App Logo Removed!"); document.getElementById('appLogoLink').value=""; } catch(e) { showUI(false); }
+            try { 
+                await trackedDeleteDoc(doc(db, "App_Settings", "Logo")); 
+                await updateAppVersion(); // VERSION UPDATE
+                
+                showUI(false); showCustomModal("Success", "App Logo Removed!"); 
+                document.getElementById('appLogoLink').value=""; 
+            } catch(e) { showUI(false); }
         }
 
         window.saveBanner = async function() {
             showUI(true);
-            try { await trackedSetDoc(doc(db, "App_Settings", "Banner"), { title: document.getElementById('banTitle').value, subtitle: document.getElementById('banSub').value, imageUrl: document.getElementById('banImg').value }); showUI(false); showCustomModal("Success", "Banner Updated Successfully!"); } catch(e) { showUI(false); }
+            try { 
+                await trackedSetDoc(doc(db, "App_Settings", "Banner"), { title: document.getElementById('banTitle').value, subtitle: document.getElementById('banSub').value, imageUrl: document.getElementById('banImg').value }); 
+                await updateAppVersion(); // VERSION UPDATE
+                
+                showUI(false); showCustomModal("Success", "Banner Updated Successfully!"); 
+            } catch(e) { showUI(false); }
         }
         window.removeBanner = async function() {
             showUI(true);
-            try { await trackedDeleteDoc(doc(db, "App_Settings", "Banner")); showUI(false); showCustomModal("Success", "Banner Removed Completely!"); document.getElementById('banTitle').value=""; document.getElementById('banSub').value=""; document.getElementById('banImg').value=""; } catch(e) { showUI(false); }
+            try { 
+                await trackedDeleteDoc(doc(db, "App_Settings", "Banner")); 
+                await updateAppVersion(); // VERSION UPDATE
+                
+                showUI(false); showCustomModal("Success", "Banner Removed Completely!"); 
+                document.getElementById('banTitle').value=""; document.getElementById('banSub').value=""; document.getElementById('banImg').value=""; 
+            } catch(e) { showUI(false); }
         }
 
         window.saveDailyTarget = async function() {
             showUI(true);
-            try { await trackedSetDoc(doc(db, "Notices", "Daily_Target"), { description: document.getElementById('dailyTargetDesc').value }); showUI(false); showCustomModal("Success", "Daily Target Published!"); } catch(e) { showUI(false); }
+            try { 
+                await trackedSetDoc(doc(db, "Notices", "Daily_Target"), { description: document.getElementById('dailyTargetDesc').value }); 
+                await updateAppVersion(); // VERSION UPDATE
+                
+                showUI(false); showCustomModal("Success", "Daily Target Published!"); 
+            } catch(e) { showUI(false); }
         }
         window.removeDailyTarget = async function() {
             showUI(true);
-            try { await trackedDeleteDoc(doc(db, "Notices", "Daily_Target")); showUI(false); showCustomModal("Success", "Daily Target Removed!"); document.getElementById('dailyTargetDesc').value=""; } catch(e) { showUI(false); }
+            try { 
+                await trackedDeleteDoc(doc(db, "Notices", "Daily_Target")); 
+                await updateAppVersion(); // VERSION UPDATE
+                
+                showUI(false); showCustomModal("Success", "Daily Target Removed!"); 
+                document.getElementById('dailyTargetDesc').value=""; 
+            } catch(e) { showUI(false); }
         }
 
         window.saveNotice = async function() {
             showUI(true);
-            try { await trackedSetDoc(doc(db, "Notices", "Latest_Notice"), { title: document.getElementById('notTitle').value, description: document.getElementById('notDesc').value }); showUI(false); showCustomModal("Success", "Notice Published!"); } catch(e) { showUI(false); }
+            try { 
+                await trackedSetDoc(doc(db, "Notices", "Latest_Notice"), { title: document.getElementById('notTitle').value, description: document.getElementById('notDesc').value }); 
+                await updateAppVersion(); // VERSION UPDATE
+                
+                showUI(false); showCustomModal("Success", "Notice Published!"); 
+            } catch(e) { showUI(false); }
         }
         window.removeNotice = async function() {
             showUI(true);
-            try { await trackedDeleteDoc(doc(db, "Notices", "Latest_Notice")); showUI(false); showCustomModal("Success", "Notice Removed!"); document.getElementById('notTitle').value=""; document.getElementById('notDesc').value=""; } catch(e) { showUI(false); }
+            try { 
+                await trackedDeleteDoc(doc(db, "Notices", "Latest_Notice")); 
+                await updateAppVersion(); // VERSION UPDATE
+                
+                showUI(false); showCustomModal("Success", "Notice Removed!"); 
+                document.getElementById('notTitle').value=""; document.getElementById('notDesc').value=""; 
+            } catch(e) { showUI(false); }
         }
 
         // ================= SALES & CODES =================
@@ -1068,7 +1157,12 @@
             const price = document.getElementById('basePrice').value;
             if(!exam || !price) return showCustomModal("Wait", "Select Exam Series and enter price!");
             showUI(true);
-            try { await trackedSetDoc(doc(db, "Pricing", exam), { basePrice: price, examName: exam }); showUI(false); showCustomModal("Success", `Price updated for ${exam}!`); } catch(e) { showUI(false); }
+            try { 
+                await trackedSetDoc(doc(db, "Pricing", exam), { basePrice: price, examName: exam }); 
+                await updateAppVersion(); // VERSION UPDATE
+                
+                showUI(false); showCustomModal("Success", `Price updated for ${exam}!`); 
+            } catch(e) { showUI(false); }
         }
 
         window.generateRandomCode = () => { const p = () => Math.random().toString(36).substring(2,6).toUpperCase(); document.getElementById('actCode').value = `${p()}-${p()}-${p()}-${p()}`; }
@@ -1091,7 +1185,13 @@
             const code = document.getElementById('cupCode').value.toUpperCase(), dis = document.getElementById('cupDis').value;
             if(!exam || !code || !dis) return showCustomModal("Wait", "Select Exam Series, enter code and discount!");
             showUI(true);
-            try { await trackedSetDoc(doc(db, "Coupons", code), { code, examName: exam, discount: dis, status: "Active" }); showUI(false); showCustomModal("Success", `Coupon Activated for ${exam}!`); document.getElementById('cupCode').value=""; document.getElementById('cupDis').value=""; } catch(e) { showUI(false); }
+            try { 
+                await trackedSetDoc(doc(db, "Coupons", code), { code, examName: exam, discount: dis, status: "Active" }); 
+                await updateAppVersion(); // VERSION UPDATE
+                
+                showUI(false); showCustomModal("Success", `Coupon Activated for ${exam}!`); 
+                document.getElementById('cupCode').value=""; document.getElementById('cupDis').value=""; 
+            } catch(e) { showUI(false); }
         }
 
         // ================= SETTINGS (UPI & SUPPORT) =================
@@ -1103,6 +1203,8 @@
                     upi2: document.getElementById('upiId2').value,
                     mode: document.getElementById('upiMode').value
                 }, {merge: true});
+                await updateAppVersion(); // VERSION UPDATE
+                
                 showUI(false); showCustomModal("Success", "UPI Config Settings Updated!");
             } catch(e) { showUI(false); showCustomModal("Error", e.message); }
         }
@@ -1116,13 +1218,20 @@
                     whatsapp: document.getElementById('supWa').value, 
                     other: document.getElementById('supOther').value 
                 }, {merge: true}); 
+                await updateAppVersion(); // VERSION UPDATE
+                
                 showUI(false); showCustomModal("Success", "Support Links Updated! No links were lost."); 
             } catch(e) { showUI(false); }
         }
 
         window.savePaymentInfo = async function() {
             showUI(true);
-            try { await trackedSetDoc(doc(db, "App_Settings", "PaymentInfo"), { instructions: document.getElementById('payInst').value }); showUI(false); showCustomModal("Success", "Payment Instructions Saved!"); } catch(e) { showUI(false); }
+            try { 
+                await trackedSetDoc(doc(db, "App_Settings", "PaymentInfo"), { instructions: document.getElementById('payInst').value }); 
+                await updateAppVersion(); // VERSION UPDATE
+                
+                showUI(false); showCustomModal("Success", "Payment Instructions Saved!"); 
+            } catch(e) { showUI(false); }
         }
 
         // ================= REMOVE DATA ZONE =================
@@ -1165,6 +1274,8 @@
             showUI(true);
             try {
                 await trackedDeleteDoc(doc(db, colName, docId));
+                await updateAppVersion(); // VERSION UPDATE
+                
                 document.getElementById(`item-${docId}`).style.display = "none";
                 fetchDropdownData();
                 showUI(false); showCustomModal("Deleted", "Item successfully removed.");
