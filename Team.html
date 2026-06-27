@@ -94,6 +94,20 @@
             }
         }
 
+        // ================= 🔥 NEW: APP VERSION TRACKER (FOR OFFLINE CACHE) 🔥 =================
+        window.updateAppVersion = async function() {
+            try {
+                const ref = doc(db, "App_Settings", "DataVersion");
+                const snap = await getDoc(ref);
+                let currentVersion = 1;
+                if(snap.exists() && snap.data().version) {
+                    currentVersion = snap.data().version;
+                }
+                await setDoc(ref, { version: currentVersion + 1 }, {merge: true});
+                console.log("🔥 App Data Version Updated to: " + (currentVersion + 1));
+            } catch(e) { console.log("Version update error:", e); }
+        }
+
         // Login Logic
         window.teamLogin = async function() {
             const name = document.getElementById('teamName').value.trim();
@@ -197,6 +211,7 @@
             const msg = document.getElementById('targetMsg').value;
             try {
                 await setDoc(doc(db, "Notices", "Daily_Target"), { description: msg });
+                await updateAppVersion(); // 🔥 VERSION UPDATE
                 alert("✅ Daily Target Updated Successfully!");
             } catch(e) { alert("Error updating target."); }
         }
@@ -207,6 +222,7 @@
             const desc = document.getElementById('notDesc').value;
             try {
                 await setDoc(doc(db, "Notices", "Latest_Notice"), { title: title, description: desc });
+                await updateAppVersion(); // 🔥 VERSION UPDATE
                 alert("✅ Notice Board Updated Successfully!");
             } catch(e) { alert("Error updating notice."); }
         }
